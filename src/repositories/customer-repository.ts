@@ -41,7 +41,7 @@ export async function findCustomerByChannel(
     .from('customers')
     .select('*')
     .eq('channel', channel)
-    .eq('channeluserid', channelUserId)
+    .eq('channel_user_id', channelUserId)
     .single();
 
   if (error) {
@@ -67,12 +67,12 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
     .from('customers')
     .insert({
       channel: customer.channel,
-      channeluserid: customer.channelUserId,
+      channel_user_id: customer.channelUserId,
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      gurusubscriptionid: customer.guruSubscriptionId,
-      asaascustomerid: customer.asaasCustomerId
+      guru_subscription_id: customer.guruSubscriptionId,
+      asaas_customer_id: customer.asaasCustomerId
     })
     .select()
     .single();

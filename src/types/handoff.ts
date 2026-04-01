@@ -127,19 +127,19 @@ export async function persistHandoff(handoff: AgentHandoff): Promise<{ success: 
     const { error } = await supabase
       .from('handoffs')
       .insert({
-        ticketid: handoff.ticketId,
-        fromagent: handoff.from,
-        toagent: handoff.to,
+        ticket_id: handoff.ticketId,
+        from_agent: handoff.from,
+        to_agent: handoff.to,
         reason: `Classificação: ${handoff.intent} (confidence: ${handoff.confidence})`,
         urgency: handoff.urgency,
-        contextsnapshot: {
+        context_snapshot: {
           context: handoff.context,
           customerProfile: handoff.customerProfile,
           sector: handoff.sector,
           intent: handoff.intent,
           confidence: handoff.confidence
         },
-        toolresults: handoff.toolResults ? JSON.stringify(handoff.toolResults) : null
+        tool_results: handoff.toolResults ? JSON.stringify(handoff.toolResults) : null
       });
 
     if (error) {
@@ -169,7 +169,7 @@ export async function updateTicketCurrentAgent(
     await supabase
       .from('tickets')
       .update({
-        currentagent: agentType,
+        current_agent: agentType,
         sector
       })
       .eq('id', ticketId);

@@ -37,17 +37,17 @@ export async function saveMessage(message: MessageInput): Promise<{
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        externalid: message.externalId,
+        external_id: message.externalId,
         channel: message.channel,
-        customerid: message.customerId,
-        ticketid: message.ticketId,
+        customer_id: message.customerId,
+        ticket_id: message.ticketId,
         body: message.body,
-        mediaurl: message.mediaUrl,
-        mediatype: message.mediaType,
+        media_url: message.mediaUrl,
+        media_type: message.mediaType,
         sender: message.sender,
-        senderid: message.senderId,
+        sender_id: message.senderId,
         timestamp: message.timestamp?.toISOString() || new Date().toISOString(),
-        rawpayload: message.rawPayload ? JSON.stringify(message.rawPayload) : null
+        raw_payload: message.rawPayload ? JSON.stringify(message.rawPayload) : null
       })
       .select()
       .single();
@@ -99,10 +99,11 @@ export async function getMessagesByTicket(
 }>> {
   const { data, error } = await supabase
   .from('messages')
-  .select('id, externalid, channel, body, mediaurl, mediatype, sender, timestamp, rawpayload')
-  .eq('ticketid', ticketId)
+  .select('id, external_id, channel, body, media_url, media_type, sender, timestamp, raw_payload')
+  .eq('ticket_id', ticketId)
   .order('timestamp', { ascending: true })
   .limit(limit);
+
   if (error) {
     console.error('❌ Erro ao buscar mensagens:', error);
     return [];
@@ -165,14 +166,14 @@ export async function updateMessageStatus(
     const { error } = await supabase
       .from('agent_logs')
       .insert({
-        ticketid: null, // Será associado depois
-        agenttype: 'support',
+        ticket_id: null, // Será associado depois
+        agent_type: 'support',
         action: 'responded',
         input: { externalId, channel },
         output: statusData,
-        toolsused: ['whatsapp_status_webhook'],
+        tools_used: ['whatsapp_status_webhook'],
         confidence: 1.0,
-        durationms: 0
+        duration_ms: 0
       });
 
     if (error) {
