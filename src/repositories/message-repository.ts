@@ -37,17 +37,17 @@ export async function saveMessage(message: MessageInput): Promise<{
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        externalId: message.externalId,
+        externalid: message.externalId,
         channel: message.channel,
-        customerId: message.customerId,
-        ticketId: message.ticketId,
+        customerid: message.customerId,
+        ticketid: message.ticketId,
         body: message.body,
-        mediaUrl: message.mediaUrl,
-        mediaType: message.mediaType,
+        mediaurl: message.mediaUrl,
+        mediatype: message.mediaType,
         sender: message.sender,
-        senderId: message.senderId,
+        senderid: message.senderId,
         timestamp: message.timestamp?.toISOString() || new Date().toISOString(),
-        rawPayload: message.rawPayload ? JSON.stringify(message.rawPayload) : null
+        rawpayload: message.rawPayload ? JSON.stringify(message.rawPayload) : null
       })
       .select()
       .single();
@@ -98,12 +98,11 @@ export async function getMessagesByTicket(
   rawPayload: any | null;
 }>> {
   const { data, error } = await supabase
-    .from('messages')
-    .select('id, externalId, channel, body, mediaUrl, mediaType, sender, timestamp, rawPayload')
-    .eq('ticketId', ticketId)
-    .order('timestamp', { ascending: true })
-    .limit(limit);
-
+  .from('messages')
+  .select('id, externalid, channel, body, mediaurl, mediatype, sender, timestamp, rawpayload')
+  .eq('ticketid', ticketId)
+  .order('timestamp', { ascending: true })
+  .limit(limit);
   if (error) {
     console.error('❌ Erro ao buscar mensagens:', error);
     return [];
@@ -166,14 +165,14 @@ export async function updateMessageStatus(
     const { error } = await supabase
       .from('agent_logs')
       .insert({
-        ticketId: null, // Será associado depois
-        agentType: 'support',
+        ticketid: null, // Será associado depois
+        agenttype: 'support',
         action: 'responded',
         input: { externalId, channel },
         output: statusData,
-        toolsUsed: ['whatsapp_status_webhook'],
+        toolsused: ['whatsapp_status_webhook'],
         confidence: 1.0,
-        durationMs: 0
+        durationms: 0
       });
 
     if (error) {

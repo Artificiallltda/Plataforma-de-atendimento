@@ -299,7 +299,7 @@ export class RouterAgent {
       // Buscar dados do cliente
       const { data: customer } = await supabase
         .from('customers')
-        .select('id, name, guruSubscriptionId')
+        .select('id, name, gurusubscriptionid')
         .eq('id', customerId)
         .single();
 
@@ -310,9 +310,9 @@ export class RouterAgent {
       // Buscar tickets recentes
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('id, sector, intent, status, csatScore')
-        .eq('customerId', customerId)
-        .order('createdAt', { ascending: false })
+        .select('id, sector, intent, status, csatscore')
+        .eq('customerid', customerId)
+        .order('createdat', { ascending: false })
         .limit(5);
 
       // Buscar ticket ativo
@@ -354,8 +354,8 @@ export class RouterAgent {
       await supabase
         .from('agent_logs')
         .insert({
-          ticketId,
-          agentType: 'router',
+          ticketid: ticketId,
+          agenttype: 'router',
           action: 'classified',
           input: { message: 'ver ticket.messages' },
           output: {
@@ -364,9 +364,9 @@ export class RouterAgent {
             confidence: output.confidence,
             reasoning: output.reasoning
           },
-          toolsUsed: ['gemini_classification', 'customer_history_lookup'],
+          toolsused: ['gemini_classification', 'customer_history_lookup'],
           confidence: output.confidence,
-          durationMs
+          durationms: durationMs
         });
     } catch (error) {
       console.error('❌ Erro ao logar decisão do RouterAgent:', error);
