@@ -17,6 +17,7 @@
     "noUnusedParameters": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": false,
+    "noEmitOnError": false,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true
   },

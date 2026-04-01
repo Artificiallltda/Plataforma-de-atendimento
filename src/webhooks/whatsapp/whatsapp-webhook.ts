@@ -7,10 +7,10 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { whatsappConfig, validateWhatsappConfig } from '../../../config/whatsapp';
-import { verifyWebhookToken, getChallenge, verifyPayloadSignature } from '../../../validators/whatsapp-webhook-validator';
-import { parseWhatsAppEvent, WhatsAppWebhookPayload } from '../../../parsers/whatsapp-parser';
-import { normalizeAndSaveWhatsAppMessage, updateMessageStatus } from '../../../services/normalization-service';
+import { whatsappConfig, validateWhatsappConfig } from '../../config/whatsapp';
+import { verifyWebhookToken, getChallenge, verifyPayloadSignature } from '../../validators/whatsapp-webhook-validator';
+import { parseWhatsAppEvent, WhatsAppWebhookPayload } from '../../parsers/whatsapp-parser';
+import { normalizeAndSaveWhatsAppMessage, updateMessageStatus } from '../../services/normalization-service';
 
 /**
  * GET /webhooks/whatsapp
