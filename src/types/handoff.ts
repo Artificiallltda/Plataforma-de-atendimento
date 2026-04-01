@@ -4,6 +4,8 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
+import { randomUUID } from 'node:crypto';
+
 export type AgentType = 'router' | 'support' | 'finance' | 'sales' | 'escalation' | 'human' | 'feedback';
 export type Sector = 'suporte' | 'financeiro' | 'comercial';
 export type Urgency = 'low' | 'medium' | 'high' | 'critical';
@@ -101,7 +103,7 @@ export function createHandoffFromRouter(
   channel: 'whatsapp' | 'telegram' | 'web'
 ): AgentHandoff {
   return {
-    handoffId: crypto.randomUUID(),
+    handoffId: randomUUID(),
     ticketId,
     timestamp: new Date(),
     from: 'router',

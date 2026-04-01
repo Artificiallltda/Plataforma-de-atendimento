@@ -56,7 +56,7 @@ class GuruServiceClient {
     }
 
     this.api = axios.create({
-      baseURL: process.env.GURU_API_BASE_URL || 'https://api.guru.com.br/v1',
+      baseURL: process.env.GURU_API_BASE_URL || 'https://api.digitalmanagerguru.com.br/v1',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
