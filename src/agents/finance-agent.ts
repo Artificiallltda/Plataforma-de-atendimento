@@ -120,7 +120,7 @@ export class FinanceAgent {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-2.5-flash'  // Atualizado: Gemini 2.5 Flash (Jan 2026)
+      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-3.1-flash-latest'
     });
   }
 

@@ -90,7 +90,7 @@ export class SupportAgent {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_SUPPORT || 'gemini-3.1-pro'  // Atualizado: Gemini 3.1 Pro (Fev 2026)
+      model: process.env.GEMINI_MODEL_SUPPORT || 'gemini-3.1-pro-latest'
     });
   }
 

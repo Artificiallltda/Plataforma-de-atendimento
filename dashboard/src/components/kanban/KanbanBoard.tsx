@@ -96,9 +96,9 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
     try {
       const updateData: any = { status: finishColId }
       if (finishColId === 'resolvido') {
-        updateData.resolvedAt = new Date().toISOString()
+        updateData.resolved_at = new Date().toISOString()
       } else if (startColId === 'resolvido') {
-        updateData.resolvedAt = null
+        updateData.resolved_at = null
       }
 
       const { error } = await supabase
