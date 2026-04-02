@@ -131,11 +131,10 @@ export async function getMessagesByCustomer(
 }>> {
   const { data, error } = await supabase
     .from('messages')
-    .select('id, ticketId, body, sender, timestamp')
-    .eq('customerId', customerId)
+    .select('id, ticket_id, body, sender, timestamp')
+    .eq('customer_id', customerId)
     .order('timestamp', { ascending: false })
     .limit(limit);
-
   if (error) {
     console.error('❌ Erro ao buscar mensagens do cliente:', error);
     return [];

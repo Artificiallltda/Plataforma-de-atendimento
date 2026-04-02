@@ -395,7 +395,7 @@ export class SalesAgent {
       // Buscar lead no Supabase (tabela leads ou customers)
       const { data: customer } = await supabase
         .from('customers')
-        .select('name, email, phone, guruSubscriptionId, asaasCustomerId')
+        .select('name, email, phone, guru_subscription_id, asaas_customer_id')
         .eq('phone', phone)
         .single();
 
@@ -410,7 +410,7 @@ export class SalesAgent {
       const { count } = await supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })
-        .eq('customerId', customer.id)
+        .eq('customer_id', customer.id)
         .eq('sector', 'comercial');
 
       return {

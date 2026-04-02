@@ -128,7 +128,7 @@ async function getTicketMessages(ticketId: string): Promise<MessageContext[]> {
     const { data, error } = await supabase
       .from('messages')
       .select('id, body, sender, timestamp')
-      .eq('ticketId', ticketId)
+      .eq('ticket_id', ticketId)
       .order('timestamp', { ascending: false })
       .limit(10);
 

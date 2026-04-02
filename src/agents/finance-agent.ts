@@ -425,7 +425,7 @@ export class FinanceAgent {
       // Buscar dados do cliente para obter guruSubscriptionId
       const { data: customer } = await supabase
         .from('customers')
-        .select('guruSubscriptionId')
+        .select('guru_subscription_id')
         .eq('id', customerId)
         .single();
 
@@ -495,7 +495,7 @@ export class FinanceAgent {
       // Buscar dados do cliente para obter guruSubscriptionId
       const { data: customer } = await supabase
         .from('customers')
-        .select('guruSubscriptionId')
+        .select('guru_subscription_id')
         .eq('id', customerId)
         .single();
 

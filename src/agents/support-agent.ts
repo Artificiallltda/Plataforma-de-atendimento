@@ -290,7 +290,7 @@ export class SupportAgent {
       // Buscar dados do cliente no Supabase
       const { data: customer } = await supabase
         .from('customers')
-        .select('guruSubscriptionId, asaasCustomerId')
+        .select('guru_subscription_id, asaas_customer_id')
         .eq('id', customerId)
         .single();
 
