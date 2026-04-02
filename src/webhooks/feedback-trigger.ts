@@ -17,10 +17,10 @@ export async function registerFeedbackTriggerRoutes(fastify: FastifyInstance) {
     try {
       fastify.log.info(`Disparando feedback para ticket: ${ticketId}`);
 
-      // 1. Buscar dados do ticket para garantir que existe e obter customerId/channel
+      // 1. Buscar dados do ticket para garantir que existe e obter customer_id/channel
       const { data, error: ticketError } = await supabase
         .from('tickets')
-        .select('id, customerId, channel, status')
+        .select('id, customer_id, channel, status')
         .eq('id', ticketId)
         .single();
 
@@ -33,7 +33,7 @@ export async function registerFeedbackTriggerRoutes(fastify: FastifyInstance) {
       // 2. Acionar o agente de feedback
       const result = await feedbackAgent.sendCsatSurvey(
         ticket.id, 
-        ticket.customerId!, 
+        ticket.customer_id!, 
         ticket.channel as any
       );
 

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { supabase } from '../../config/supabase';
+import { supabase } from '../config/supabase';
 
 export async function registerAdminAuthRoutes(fastify: FastifyInstance) {
   /**
@@ -31,15 +31,15 @@ export async function registerAdminAuthRoutes(fastify: FastifyInstance) {
 
       const userId = authData.user.id;
 
-      // 2. Criar registro na tabela public.agents
+      // 2. Criar registro na tabela public.agents (SNAKE_CASE)
       const { error: dbError } = await supabase
         .from('agents')
         .insert({
-          id: userId, // Usar o mesmo ID do Auth
+          id: userId,
           name,
           email,
           sector,
-          isOnline: false
+          is_online: false
         });
 
       if (dbError) {
