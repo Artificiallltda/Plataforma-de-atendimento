@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Message } from '@/hooks/use-messages'
 
 interface MessageListProps {
@@ -20,16 +20,37 @@ const senderConfig = {
 
 export function MessageList({ messages, loading }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior, block: 'end' })
+    }
+  }
 
   useEffect(() => {
-    // Técnica de Ancoragem: Manda o navegador focar no elemento final
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'end'
-      })
+    if (loading) return
+
+    const container = containerRef.current
+    if (!container) return
+
+    // Se for a primeira carga, desce direto (sem animação para ser instantâneo)
+    if (isFirstLoad && messages.length > 0) {
+      setTimeout(() => {
+        scrollToBottom('auto')
+        setIsFirstLoad(false)
+      }, 100)
+      return
     }
-  }, [messages])
+
+    // Só desce automaticamente se o usuário já estiver próximo ao fundo (ex: lendo as últimas mensagens)
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150
+    
+    if (isAtBottom) {
+      scrollToBottom('smooth')
+    }
+  }, [messages, loading])
 
   if (loading) {
     return (
@@ -49,6 +70,7 @@ export function MessageList({ messages, loading }: MessageListProps) {
 
   return (
     <div 
+      ref={containerRef}
       className="flex-1 overflow-y-auto p-4 bg-slate-50/50"
     >
       <div className="flex flex-col space-y-4 min-h-full">
