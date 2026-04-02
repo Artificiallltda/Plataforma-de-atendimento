@@ -53,9 +53,12 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
             )
           `)
 
-        // Se for supervisor ou Geral, não filtra por setor (vê tudo)
-        if (sector && sector !== 'supervisor' && sector !== 'Geral') {
-          query = query.eq('sector', sector)
+        // NORMALIZAÇÃO DE FILTRO (VISIBILIDADE TOTAL PARA SUPERVISORES)
+        const normalizedSector = sector?.toLowerCase() || ''
+        const isAdmin = ['supervisor', 'geral', 'ceo', 'admin'].includes(normalizedSector)
+
+        if (sector && !isAdmin) {
+          query = query.eq('sector', normalizedSector)
         }
         
         if (status && status !== 'all') {
@@ -77,23 +80,16 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
     if (enabled) {
       loadTickets()
 
-      // Realtime subscription
       channel = supabase
-        .channel('tickets-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'tickets' },
-          () => {
-            loadTickets()
-          }
-        )
+        .channel('tickets-changes-all')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+          loadTickets()
+        })
         .subscribe()
     }
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
+      if (channel) supabase.removeChannel(channel)
     }
   }, [sector, status, enabled, supabase])
 
