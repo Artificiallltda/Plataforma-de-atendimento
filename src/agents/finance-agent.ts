@@ -103,13 +103,6 @@ FORMATO DE RESPOSTA (JSON):
   "monetaryValue": 0.00
 }
 `;
-  "toolUsed": "nome_da_ferramenta (se aplicável)",
-  "confidence": 0.0-1.0,
-  "needsHumanHandoff": true|false,
-  "escalationReason": "motivo (se escalada)",
-  "monetaryValue": 0.00 (se aplicável)
-}
-`;
 
 /**
  * FinanceAgent Class
