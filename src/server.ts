@@ -38,6 +38,25 @@ fastify.get('/health', async (request, reply) => {
   };
 });
 
+// ROTA DE DEBUG - RESET DO BANCO (LIMPEZA TOTAL)
+fastify.get('/api/debug/reset', async (request, reply) => {
+  const { getSupabaseClient } = require('./config/supabase');
+  const supabase = getSupabaseClient();
+  
+  console.log('🧹 Iniciando limpeza total do banco de dados...');
+  
+  try {
+    // A ordem importa por causa das foreign keys
+    await (supabase.from('messages') as any).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await (supabase.from('tickets') as any).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    
+    return { success: true, message: 'Banco de dados limpo com sucesso!' };
+  } catch (error: any) {
+    console.error('❌ Erro na limpeza:', error);
+    return reply.status(500).send({ success: false, error: error.message });
+  }
+});
+
 // Registrar webhooks
 fastify.register(registerWhatsappWebhook);
 fastify.register(registerAdminAuthRoutes);
@@ -62,9 +81,6 @@ fastify.listen({ port: Number(PORT), host: '0.0.0.0' }, (err, address) => {
     process.exit(1);
   }
   console.log(`🚀 PAA API rodando em ${address}`);
-  console.log(`📱 Webhook WhatsApp: ${address}/webhooks/whatsapp`);
-  console.log(`✈️ Webhook Telegram: ${address}/webhooks/telegram`);
-  console.log(`💚 Health check: ${address}/health`);
 });
 
 export default fastify;

@@ -44,9 +44,13 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
   const router = useRouter()
   const [boardData, setBoardData] = useState<Record<string, Ticket[]>>({})
   const [loading, setLoading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
+    // Bloqueia a atualização externa se o usuário estiver arrastando manualmente
+    if (isDragging) return
+
     const organized: Record<string, Ticket[]> = {
       novo: [],
       bot_ativo: [],
@@ -62,9 +66,14 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
     })
 
     setBoardData(organized)
-  }, [initialTickets])
+  }, [initialTickets, isDragging])
+
+  const onDragStart = () => {
+    setIsDragging(true)
+  }
 
   const onDragEnd = async (result: DropResult) => {
+    setIsDragging(false)
     const { destination, source, draggableId } = result
 
     if (!destination) return
@@ -167,7 +176,7 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
       </div>
 
       {/* Columns Container */}
-      <DragDropContext onDragEnd={onDragEnd}>
+      <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide">
           <div className="flex gap-8 min-h-full pb-4">
             {columns.map((col, index) => (

@@ -88,7 +88,8 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
  */
 export async function identifyOrCreateCustomer(
   channel: string,
-  channelUserId: string
+  channelUserId: string,
+  name?: string
 ): Promise<Customer> {
   let customer = await findCustomerByChannel(channel, channelUserId);
 
@@ -99,10 +100,17 @@ export async function identifyOrCreateCustomer(
 
   customer = await createCustomer({
     channel: channel as 'whatsapp' | 'telegram' | 'web',
-    channelUserId
+    channelUserId,
+    name
   });
 
   if (!customer) throw new Error('Falha ao criar cliente');
+
+  // Se o cliente já existia mas não tinha nome, e agora temos um nome, atualizar
+  if (name && !customer.name) {
+    const updated = await updateCustomer(customer.id, { name });
+    if (updated) customer = updated;
+  }
 
   // Enriquecer dados (background)
   enrichCustomerData(customer, channelUserId).catch(() => {});

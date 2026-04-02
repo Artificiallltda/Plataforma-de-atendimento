@@ -73,15 +73,15 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
 
   return (
     <motion.div
-      layoutId={ticket.id}
-      whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.3 } }}
-      whileTap={{ scale: 0.98 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4, scale: 1.01 }}
       onClick={() => onClick?.(ticket)}
       className={cn(
-        "relative bg-white rounded-3xl p-5 cursor-pointer select-none group transition-all duration-300",
-        "border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50",
-        isDragging && "shadow-2xl ring-2 ring-slate-900 border-transparent opacity-95 scale-105 z-50",
-        !isDragging && "mb-0"
+        "group relative bg-white/70 backdrop-blur-md rounded-[28px] p-5 cursor-pointer transition-all duration-300",
+        "border border-white/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:bg-white/90",
+        isDragging && "shadow-2xl shadow-indigo-200/50 ring-2 ring-indigo-500/20 scale-[1.02] bg-white opacity-90",
+        "flex flex-col gap-5 select-none"
       )}
     >
       {/* Priority Indicator - Barra Lateral Premium */}

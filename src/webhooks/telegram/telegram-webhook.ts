@@ -39,8 +39,10 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
         {
           externalId: `${msg.userId}-${Date.now()}`,
           from: msg.userId,
+          name: msg.userName, // Passando o nome real do Telegram para o banco
           body: msg.text,
-          timestamp: new Date(),
+          mediaUrl: msg.imageUrl,
+          mediaType: msg.mediaType as any,
           rawPayload: msg.rawPayload
         },
         'telegram'
@@ -117,14 +119,15 @@ function setupOutboundSync(provider: TelegramProvider) {
         // Só processa se for do canal Telegram e não tiver vindo do próprio bot/webhook
         if (newMessage.channel === 'telegram' && newMessage.body) {
           console.log(`📤 Enviando resposta humana para Telegram: ${newMessage.customer_id}`);
+          console.log(`📡 Novo evento de mensagem human detectado no Supabase para ${newMessage.customer_id}`);
           
           try {
-            await provider.sendMessage({
+            const result = await provider.sendMessage({
               to: newMessage.customer_id, // No Telegram, guardamos o chatId no customer_id
               text: newMessage.body,
               parseMode: 'Markdown'
             });
-            console.log('✅ Mensagem enviada com sucesso ao Telegram.');
+            console.log(`✅ Resultado do envio para Telegram: ${result ? 'Sucesso' : 'Falha'}`);
           } catch (error) {
             console.error('❌ Falha ao enviar mensagem de saída para o Telegram:', error);
           }

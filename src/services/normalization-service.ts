@@ -146,6 +146,7 @@ export async function normalizeAndSaveGenericMessage(
   message: {
     externalId: string;
     from: string;
+    name?: string;
     body: string;
     mediaUrl?: string;
     mediaType?: 'audio' | 'image' | 'document' | 'video';
@@ -159,8 +160,8 @@ export async function normalizeAndSaveGenericMessage(
   error?: string;
 }> {
   try {
-    // 1. Identificar cliente
-    const customer = await identifyOrCreateCustomer(channel, message.from);
+    // 1. Identificar cliente (agora com nome)
+    const customer = await identifyOrCreateCustomer(channel, message.from, message.name);
 
     // 1b. Buscar ticket aberto do cliente para vincular a mensagem desde o inicio
     let existingTicketId: string | undefined;
