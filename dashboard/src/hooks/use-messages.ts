@@ -125,3 +125,30 @@ export async function sendMessage(
     return { success: false, error: err.message }
   }
 }
+
+export async function updateTicketStatus(
+  ticketId: string,
+  status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido',
+  priority?: 'critica' | 'alta' | 'media' | 'baixa'
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createClient()
+
+  try {
+    const updateData: any = { status }
+    if (priority) updateData.priority = priority
+    if (status === 'resolvido') {
+      updateData.resolved_at = new Date().toISOString()
+    }
+
+    const { error } = await supabase
+      .from('tickets')
+      .update(updateData)
+      .eq('id', ticketId)
+
+    if (error) throw error
+    return { success: true }
+  } catch (err: any) {
+    console.error('Erro ao atualizar status do ticket:', err)
+    return { success: false, error: err.message }
+  }
+}

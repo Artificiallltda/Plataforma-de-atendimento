@@ -5,6 +5,7 @@ import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { Ticket } from '@/hooks/use-tickets'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { User, CheckCircle2, Bot, ShieldOff } from 'lucide-react'
 
 interface InboxProps {
@@ -31,7 +32,7 @@ const priorityLabels = {
 export function Inbox({ ticket, senderId, onBack }: InboxProps) {
   const router = useRouter()
   const { messages, loading } = useMessages({ ticketId: ticket.id })
-  const [currentStatus, setCurrentStatus] = (require('react').useState)(ticket.status)
+  const [currentStatus, setCurrentStatus] = useState(ticket.status)
 
   const handleStatusChange = async (newStatus: any) => {
     const result = await updateTicketStatus(ticket.id, newStatus)
