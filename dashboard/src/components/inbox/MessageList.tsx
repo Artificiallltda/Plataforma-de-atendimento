@@ -35,7 +35,7 @@ export function MessageList({ messages, loading }: MessageListProps) {
   }
 
   return (
-    <div className="space-y-4 max-h-[600px] overflow-y-auto p-4">
+    <div className="flex-1 space-y-4 overflow-y-auto p-4 min-h-0 bg-slate-50/50">
       {messages.map((message, index) => {
         const isCustomer = message.sender === 'customer'
         const config = senderConfig[message.sender]

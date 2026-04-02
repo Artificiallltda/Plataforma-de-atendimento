@@ -118,12 +118,25 @@ function setupOutboundSync(provider: TelegramProvider) {
         
         // Só processa se for do canal Telegram e não tiver vindo do próprio bot/webhook
         if (newMessage.channel === 'telegram' && newMessage.body) {
-          console.log(`📤 Enviando resposta humana para Telegram: ${newMessage.customer_id}`);
-          console.log(`📡 Novo evento de mensagem human detectado no Supabase para ${newMessage.customer_id}`);
+          console.log(`📤 Recuperando ID real do Telegram para o cliente UUID: ${newMessage.customer_id}`);
           
           try {
+            // BUSCAR O ID REAL DO TELEGRAM (NÚMERO) NO BANCO
+            const { data: customer, error: custErr } = await supabase
+              .from('customers')
+              .select('channel_user_id')
+              .eq('id', newMessage.customer_id)
+              .single();
+
+            if (custErr || !customer?.channel_user_id) {
+              console.error(`❌ Não foi possível encontrar o ID do Telegram para o UUID ${newMessage.customer_id}:`, custErr);
+              return;
+            }
+
+            console.log(`📡 Enviando mensagem para o ChatID Telegram: ${customer.channel_user_id}`);
+            
             const result = await provider.sendMessage({
-              to: newMessage.customer_id, // No Telegram, guardamos o chatId no customer_id
+              to: customer.channel_user_id, // AGORA USANDO O ID CORRETO (NÚMERO)
               text: newMessage.body,
               parseMode: 'Markdown'
             });

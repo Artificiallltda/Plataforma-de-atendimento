@@ -86,8 +86,8 @@ export function MessageInput({
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Digite sua resposta... (Enter para enviar, Shift+Enter para nova linha)"
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-          rows={2}
+          className="flex-1 px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none resize-none transition-all duration-200 text-slate-700 font-medium"
+          rows={4}
           disabled={sending}
         />
         <button

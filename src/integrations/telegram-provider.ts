@@ -170,12 +170,14 @@ export class TelegramProvider {
   /**
    * Construir nome completo do usuário
    */
-  private buildUserName(user?: TelegramBot.User): string | undefined {
-    if (!user) return undefined;
+  private buildUserName(from?: any): string {
+    if (!from) return 'Cliente Telegram';
+    const firstName = from.first_name || '';
+    const lastName = from.last_name || '';
+    const username = from.username ? `@${from.username}` : '';
     
-    const parts = [user.first_name, user.last_name].filter(Boolean);
-    if (parts.length === 0) return user.username;
-    return parts.join(' ');
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || username || `Usuário ${from.id}`;
   }
 
   /**
