@@ -6,6 +6,7 @@
  * @see docs/architecture/architecture.md#1-arquitetura-de-alto-nível
  */
 
+import { randomUUID } from 'node:crypto';
 import { parseWhatsAppEvent, WhatsAppWebhookPayload } from '../parsers/whatsapp-parser';
 import { validateIncomingMessage, IncomingMessage } from '../validators/message-schema';
 import { identifyOrCreateCustomer } from '../repositories/customer-repository';
@@ -63,7 +64,7 @@ export async function normalizeAndSaveWhatsAppMessage(
 
           // 3. Criar mensagem normalizada
           const normalizedMessage: NormalizedMessage = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             externalId: msg.externalId,
             channel: 'whatsapp',
             customerId: customer.id,
@@ -160,7 +161,7 @@ export async function normalizeAndSaveGenericMessage(
 
     // 2. Criar mensagem normalizada
     const normalizedMessage: NormalizedMessage = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       externalId: message.externalId,
       channel,
       customerId: customer.id,

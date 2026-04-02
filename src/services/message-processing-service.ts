@@ -14,6 +14,7 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
+import { randomUUID } from 'node:crypto';
 import { routerAgent, getRouterAgent } from '../agents/router-agent';
 import { supabase } from '../config/supabase';
 import { createHandoffFromRouter, persistHandoff, updateTicketCurrentAgent, AgentHandoff, CustomerProfile, MessageContext } from '../types/handoff';
@@ -175,7 +176,7 @@ export async function processClarificationResponse(
   if (!match) {
     // Resposta não reconhecida, tentar classificar com IA
     return processIncomingMessage({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       externalId: 'clarification',
       channel,
       customerId,
