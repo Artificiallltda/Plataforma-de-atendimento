@@ -42,9 +42,9 @@ export default function TicketDetailPage() {
       // NORMALIZAÇÃO DE ID PARA O FRONTEND
       let customerId = ticketData.customer_id || (ticketData as any).customerId;
       
-      // BUSCA DE EMERGÊNCIA: Se o ID vier null, tentar descobrir pelo banco (Messages ou Inbox)
+      // BUSCA DE EMERGÊNCIA E AUTO-CORREÇÃO
       if (!customerId) {
-        console.log('⚠️ [TicketPage] ID do cliente ausente no ticket. Iniciando busca de emergência...');
+        console.log('⚠️ [TicketPage] ID do cliente em falta. Iniciando auto-correção...');
         const { data: lastMsg } = await supabase
           .from('messages')
           .select('customer_id')
@@ -53,8 +53,11 @@ export default function TicketDetailPage() {
           .single();
         
         if (lastMsg?.customer_id) {
-          console.log('✅ [TicketPage] ID recuperado com sucesso!', lastMsg.customer_id);
+          console.log('✅ [TicketPage] ID recuperado! Atualizando banco de dados...');
           customerId = lastMsg.customer_id;
+          
+          // CORREÇÃO NO BANCO: Salvar o ID no ticket para nunca mais dar erro
+          await supabase.from('tickets').update({ customer_id: customerId } as any).eq('id', ticketId);
         }
       }
 

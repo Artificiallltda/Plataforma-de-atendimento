@@ -22,14 +22,13 @@ export function MessageList({ messages, loading }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Garantir que o scroll aconteça após o render completo
-    const timer = setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
+    // Técnica de Ancoragem: Manda o navegador focar no elemento final
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      })
+    }
   }, [messages])
 
   if (loading) {
@@ -50,65 +49,68 @@ export function MessageList({ messages, loading }: MessageListProps) {
 
   return (
     <div 
-      ref={scrollRef}
-      className="flex-1 space-y-4 overflow-y-auto p-4 min-h-0 bg-slate-50/50"
+      className="flex-1 overflow-y-auto p-4 bg-slate-50/50"
     >
-      {messages.map((message, index) => {
-        const isCustomer = message.sender === 'customer'
-        const config = senderConfig[message.sender]
-        const channelIcon = channelIcons[message.channel]
+      <div className="flex flex-col space-y-4 min-h-full">
+        {messages.map((message, index) => {
+          const isCustomer = message.sender === 'customer'
+          const config = senderConfig[message.sender]
+          const channelIcon = channelIcons[message.channel]
 
-        return (
-          <div
-            key={message.id}
-            className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}
-          >
-            <div className={`flex items-start gap-2 max-w-[80%] ${isCustomer ? '' : 'flex-row-reverse'}`}>
-              {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center text-sm`}>
-                {config.icon}
-              </div>
-
-              {/* Message Bubble */}
-              <div className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}>
-                {/* Header */}
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                  <span className="font-bold text-slate-700">
-                    {message.agent?.name || (message.raw_payload as any)?.agent_name || config.label}
-                    {(message.agent?.sector || (message.raw_payload as any)?.agent_sector) && (
-                      <span className="text-[10px] font-medium text-slate-400 ml-1">
-                        ({message.agent?.sector || (message.raw_payload as any)?.agent_sector})
-                      </span>
-                    )}
-                  </span>
-                  <span>{channelIcon}</span>
-                  <span>{formatTime(message.timestamp)}</span>
+          return (
+            <div
+              key={message.id}
+              className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}
+            >
+              <div className={`flex items-start gap-2 max-w-[80%] ${isCustomer ? '' : 'flex-row-reverse'}`}>
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center text-sm flex-shrink-0`}>
+                  {config.icon}
                 </div>
 
-                {/* Body */}
-                <div
-                  className={`px-4 py-2 rounded-2xl ${
-                    isCustomer
-                      ? `${config.bg} rounded-tl-none`
-                      : 'bg-indigo-600 text-white rounded-tr-none'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap break-words">
-                    {message.body}
-                  </p>
-                </div>
-
-                {/* Media */}
-                {message.media_url && (
-                  <div className="mt-1 text-xs text-gray-500">
-                    📎 {message.media_type || 'Mídia'}
+                {/* Message Bubble */}
+                <div className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}>
+                  {/* Header */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                    <span className="font-bold text-slate-700">
+                      {message.agent?.name || (message.raw_payload as any)?.agent_name || config.label}
+                      {(message.agent?.sector || (message.raw_payload as any)?.agent_sector) && (
+                        <span className="text-[10px] font-medium text-slate-400 ml-1">
+                          ({message.agent?.sector || (message.raw_payload as any)?.agent_sector})
+                        </span>
+                      )}
+                    </span>
+                    <span>{channelIcon}</span>
+                    <span>{formatTime(message.timestamp)}</span>
                   </div>
-                )}
+
+                  {/* Body */}
+                  <div
+                    className={`px-4 py-2 rounded-2xl ${
+                      isCustomer
+                        ? `${config.bg} rounded-tl-none`
+                        : 'bg-indigo-600 text-white rounded-tr-none'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {message.body}
+                    </p>
+                  </div>
+
+                  {/* Media */}
+                  {message.media_url && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      📎 {message.media_type || 'Mídia'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+        {/* Elemento de Ancoragem para o Scroll */}
+        <div ref={scrollRef} className="h-2 w-full flex-shrink-0" />
+      </div>
     </div>
   )
 }
