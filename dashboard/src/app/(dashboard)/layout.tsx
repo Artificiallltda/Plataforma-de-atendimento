@@ -1,11 +1,13 @@
+import { ModernLayout } from '@/components/layout/ModernLayout'
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ModernLayout>
       {children}
-    </div>
+    </ModernLayout>
   )
 }

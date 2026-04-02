@@ -59,7 +59,7 @@ export function ModernLayout({ children }: ModernLayoutProps) {
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['suporte', 'financeiro', 'comercial', 'supervisor'] },
-    { name: 'Analytics', icon: BarChart3, path: '/supervisor', roles: ['supervisor'] },
+    { name: 'Métricas', icon: BarChart3, path: '/analytics/feedback', roles: ['supervisor'] },
     { name: 'Atendentes', icon: Users, path: '/admin/agents', roles: ['supervisor'] },
     { name: 'Configurações', icon: Settings, path: '/settings', roles: ['suporte', 'financeiro', 'comercial', 'supervisor'] },
   ]
