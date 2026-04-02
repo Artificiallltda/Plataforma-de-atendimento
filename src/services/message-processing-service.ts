@@ -144,9 +144,12 @@ export async function processIncomingMessage(message: {
       }).eq('id', finalTicketId);
     }
 
-    // 4c. SE JÁ ESTIVER EM MÃOS HUMANAS, PARAMOS AQUI (FIM DO ATROPELO)
-    if (['em_atendimento', 'aguardando_humano'].includes((currentStatus as any).status)) {
-      console.log(`🔕 [Bot] Ticket ${finalTicketId} está sob controle humano. Silenciando IA.`);
+    // 4c. SE JÁ ESTIVER EM MÃOS HUMANAS OU SE HOUVER SINAL DE VIDA HUMANA RECENTE, PARAMOS AQUI
+    const hasRecentHumanMsg = history.some(m => m.sender === 'human');
+    const isHumanControl = ['em_atendimento', 'aguardando_humano'].includes((currentStatus as any).status);
+
+    if (isHumanControl || hasRecentHumanMsg) {
+      console.log(`🔕 [Bot] Ticket ${finalTicketId} sob controle humano (Status: ${currentStatus?.status}, Humano no histórico: ${hasRecentHumanMsg}). Silenciando.`);
       return { 
         ticketId: finalTicketId, 
         clarificationMessage: null,
