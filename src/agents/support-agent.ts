@@ -88,10 +88,10 @@ export class SupportAgent {
   private retryCount: Map<string, number> = new Map();
 
   constructor() {
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     
     if (!apiKey) {
-      throw new Error('GOOGLE_AI_API_KEY não configurada. SupportAgent não pode funcionar sem IA.');
+      throw new Error('GEMINI_API_KEY não configurada. SupportAgent não pode funcionar sem IA.');
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
