@@ -40,9 +40,29 @@ export default function TicketDetailPage() {
       }
 
       // NORMALIZAÇÃO DE ID PARA O FRONTEND
+      let customerId = ticketData.customer_id || (ticketData as any).customerId;
+      
+      // BUSCA DE EMERGÊNCIA: Se o ID vier null, tentar descobrir pelo banco (Messages ou Inbox)
+      if (!customerId) {
+        console.log('⚠️ [TicketPage] ID do cliente ausente no ticket. Iniciando busca de emergência...');
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('customer_id')
+          .eq('ticket_id', ticketId)
+          .limit(1)
+          .single();
+        
+        if (lastMsg?.customer_id) {
+          console.log('✅ [TicketPage] ID recuperado com sucesso!', lastMsg.customer_id);
+          customerId = lastMsg.customer_id;
+        }
+      }
+
+      console.log('🔍 DEBUG TICKET:', ticketData.id, customerId);
+
       const normalizedTicket = {
         ...ticketData,
-        customer_id: ticketData.customer_id || (ticketData as any).customerId
+        customer_id: customerId
       }
 
       setTicket(normalizedTicket)

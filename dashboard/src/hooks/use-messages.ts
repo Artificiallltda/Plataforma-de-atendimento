@@ -41,27 +41,32 @@ export function useMessages(options: UseMessagesOptions) {
 
     const loadMessages = async () => {
       try {
-        console.log(`🔍 [useMessages] Iniciando carga para Ticket: ${ticketId}, Cliente: ${customer_id}`);
+        console.log(`🔍 [useMessages] Iniciando carga para Cliente: ${customer_id}`);
         
         if (!customer_id) {
-          console.warn('⚠️ [useMessages] customer_id está VAZIO. A carga de mensagens foi abortada.');
+          console.warn('⚠️ [useMessages] customer_id vazio.');
           setLoading(false);
           return;
         }
 
         setLoading(true)
         
+        // Query simplificada para evitar Erro 400 do Supabase
         const { data, error } = await supabase
           .from('messages')
           .select('*, agent:agents(name, sector)')
           .eq('customer_id', customer_id)
-          .order('timestamp', { ascending: true })
 
         if (error) throw error
 
-        console.log(`✅ [useMessages] ${data?.length || 0} mensagens carregadas.`);
+        // Ordenação manual no JS para garantir estabilidade
+        const sortedMessages = (data || []).sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        )
 
-        const mappedMessages = (data || []).map(m => ({
+        console.log(`✅ [useMessages] ${sortedMessages.length} mensagens carregadas.`);
+
+        const mappedMessages = sortedMessages.map(m => ({
           ...m,
           customer_id: m.customer_id || (m as any).customerId,
           ticket_id: m.ticket_id || (m as any).ticketId
@@ -70,7 +75,7 @@ export function useMessages(options: UseMessagesOptions) {
         setMessages(mappedMessages as Message[])
         setError(null)
       } catch (err: any) {
-        console.error('❌ [useMessages] Erro ao carregar mensagens:', err)
+        console.error('❌ [useMessages] Erro fatal na carga:', err)
         setError(err.message)
       } finally {
         setLoading(false)
