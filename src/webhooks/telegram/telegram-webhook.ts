@@ -10,6 +10,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import TelegramProvider, { TelegramIncomingMessage } from '../../integrations/telegram-provider';
 import { normalizeAndSaveGenericMessage } from '../../services/normalization-service';
+import { processIncomingMessage } from '../../services/message-processing-service';
 
 // Singleton do provider
 let telegramProvider: TelegramProvider | null = null;
@@ -21,6 +22,8 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
   if (!telegramProvider) {
     telegramProvider = new TelegramProvider(botToken, { polling: true });
     
+    const provider = telegramProvider; // Alias para usar dentro do callback
+
     // Registrar handler de mensagens
     telegramProvider.onMessage(async (msg) => {
       console.log('📨 Telegram mensagem recebida:', {
@@ -28,7 +31,7 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
         text: msg.text.substring(0, 50) + (msg.text.length > 50 ? '...' : '')
       });
 
-      // Normalizar e persistir mensagem
+      // 1. Normalizar e persistir mensagem
       const result = await normalizeAndSaveGenericMessage(
         {
           externalId: `${msg.userId}-${msg.timestamp.getTime()}`,
@@ -42,10 +45,42 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
         'telegram'
       );
 
-      if (result.success) {
-        console.log('✅ Telegram mensagem persistida:', result.message?.id);
-      } else {
+      if (!result.success || !result.message) {
         console.error('❌ Erro ao persistir mensagem Telegram:', result.error);
+        return;
+      }
+
+      console.log('✅ Telegram mensagem persistida:', result.message.id);
+
+      // 2. Processar com IA (RouterAgent) e responder
+      try {
+        const processed = await processIncomingMessage({
+          id: result.message.id,
+          externalId: result.message.externalId,
+          channel: 'telegram',
+          customerId: result.message.customerId,
+          ticketId: result.message.ticketId || '', // Será criado se vazio
+          body: result.message.body,
+          timestamp: new Date(result.message.timestamp)
+        });
+
+        // 3. Enviar resposta da IA de volta para o Telegram
+        if (processed.needsClarification && processed.clarificationMessage) {
+          await provider.sendMessage({
+            to: msg.userId,
+            text: processed.clarificationMessage
+          });
+        } else if (processed.handoff) {
+          // Em um handoff bem-sucedido, o bot dá a primeira resposta de recepção
+          const welcomeMsg = `Olá! Identifiquei que você precisa de *${processed.sector}*. Já estou te encaminhando para um especialista. Só um instante! 🚀`;
+          await provider.sendMessage({
+            to: msg.userId,
+            text: welcomeMsg,
+            parseMode: 'Markdown'
+          });
+        }
+      } catch (procError) {
+        console.error('❌ Erro no processamento de IA:', procError);
       }
     });
 
