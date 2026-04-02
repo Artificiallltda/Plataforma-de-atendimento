@@ -135,18 +135,29 @@ function setupOutboundSync(provider: TelegramProvider) {
 
             console.log(`📡 Enviando mensagem para o ChatID Telegram: ${customer.channel_user_id}`);
             
-            // BUSCAR NOME DO AGENTE PARA IDENTIFICAÇÃO (OPCIONAL MAS RECOMENDADO)
+            // BUSCAR NOME DO AGENTE PARA IDENTIFICAÇÃO (FALBACK PARA METADADOS)
             let agentPrefix = '';
-            if (newMessage.sender === 'human' && newMessage.sender_id) {
-              const { data: agent } = await supabase
-                .from('agents')
-                .select('name, sector')
-                .eq('id', newMessage.sender_id)
-                .single();
+            if (newMessage.sender === 'human') {
+              const metadata = newMessage.raw_payload as any;
+              let agentName = metadata?.agent_name;
+              let agentSector = metadata?.agent_sector;
+
+              if (!agentName && newMessage.sender_id) {
+                const { data: agent } = await supabase
+                  .from('agents')
+                  .select('name, sector')
+                  .eq('id', newMessage.sender_id)
+                  .single();
+                
+                if (agent) {
+                  agentName = agent.name;
+                  agentSector = agent.sector;
+                }
+              }
               
-              if (agent) {
-                const sectorLabel = agent.sector ? ` (${agent.sector.charAt(0).toUpperCase() + agent.sector.slice(1)})` : '';
-                agentPrefix = `*${agent.name}${sectorLabel}*: `;
+              if (agentName) {
+                const sectorLabel = agentSector ? ` (${agentSector.charAt(0).toUpperCase() + agentSector.slice(1)})` : '';
+                agentPrefix = `*${agentName}${sectorLabel}*: `;
               }
             }
 

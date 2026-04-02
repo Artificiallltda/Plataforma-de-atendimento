@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { sendMessage, updateTicketStatus } from '@/hooks/use-messages'
 
 interface MessageInputProps {
@@ -29,6 +29,18 @@ export function MessageInput({
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [agentName, setAgentName] = useState('Agente')
+
+  // BUSCAR NOME DO AGENTE LOGADO
+  useEffect(() => {
+    const fetchAgent = async () => {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data } = await supabase.from('agents').select('name').eq('id', senderId).single()
+      if (data) setAgentName(data.name)
+    }
+    if (senderId) fetchAgent()
+  }, [senderId])
 
   const handleSend = async () => {
     if (!message.trim()) return
@@ -36,7 +48,7 @@ export function MessageInput({
     setSending(true)
     setError(null)
 
-    const result = await sendMessage(ticketId, customerId, channel, message.trim(), senderId)
+    const result = await sendMessage(ticketId, customerId, channel, message.trim(), senderId, agentName)
 
     if (result.success) {
       setMessage('')

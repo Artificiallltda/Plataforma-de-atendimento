@@ -72,10 +72,10 @@ export function MessageList({ messages, loading }: MessageListProps) {
                 {/* Header */}
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                   <span className="font-bold text-slate-700">
-                    {message.agent?.name || config.label}
-                    {message.agent?.sector && (
+                    {message.agent?.name || (message.raw_payload as any)?.agent_name || config.label}
+                    {(message.agent?.sector || (message.raw_payload as any)?.agent_sector) && (
                       <span className="text-[10px] font-medium text-slate-400 ml-1">
-                        ({message.agent.sector})
+                        ({message.agent?.sector || (message.raw_payload as any)?.agent_sector})
                       </span>
                     )}
                   </span>

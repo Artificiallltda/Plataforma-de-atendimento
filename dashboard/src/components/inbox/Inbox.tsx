@@ -31,7 +31,10 @@ const priorityLabels = {
 
 export function Inbox({ ticket, senderId, onBack }: InboxProps) {
   const router = useRouter()
-  const { messages, loading } = useMessages({ ticketId: ticket.id })
+  const { messages, loading } = useMessages({ 
+    ticketId: ticket.id,
+    customerId: (ticket as any).customer_id || ticket.customer_id 
+  })
   const [currentStatus, setCurrentStatus] = useState(ticket.status)
 
   const handleStatusChange = async (newStatus: any) => {

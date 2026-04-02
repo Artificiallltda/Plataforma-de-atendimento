@@ -24,11 +24,12 @@ export interface Message {
 
 interface UseMessagesOptions {
   ticketId: string
+  customerId: string
   enabled?: boolean
 }
 
 export function useMessages(options: UseMessagesOptions) {
-  const { ticketId, enabled = true } = options
+  const { ticketId, customerId, enabled = true } = options
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,13 +41,15 @@ export function useMessages(options: UseMessagesOptions) {
 
     const loadMessages = async () => {
       try {
-        if (!ticketId) return
+        if (!customerId) return
         setLoading(true)
         
+        // BUSCA POR CUSTOMER_ID: Garante que o histórico do robô (em outros tickets) 
+        // apareça no chat atual do humano.
         const { data, error } = await supabase
           .from('messages')
           .select('*, agent:agents(name, sector)')
-          .eq('ticket_id', ticketId)
+          .eq('customer_id', customerId)
           .order('timestamp', { ascending: true })
 
         if (error) throw error
@@ -63,17 +66,17 @@ export function useMessages(options: UseMessagesOptions) {
     // Carregar mensagens iniciais
     loadMessages()
 
-    // Assinar atualizações em tempo real (SNAKE_CASE)
-    if (enabled && ticketId) {
+    // Assinar atualizações em tempo real baseadas no CUSTOMER_ID
+    if (enabled && customerId) {
       channel = supabase
-        .channel(`messages-${ticketId}`)
+        .channel(`messages-${customerId}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
-            filter: `ticket_id=eq.${ticketId}`
+            filter: `customer_id=eq.${customerId}`
           },
           (payload) => {
             console.log('🔔 Nova mensagem recebida via Realtime:', payload.new)
@@ -94,7 +97,7 @@ export function useMessages(options: UseMessagesOptions) {
         supabase.removeChannel(channel)
       }
     }
-  }, [ticketId, enabled, supabase])
+  }, [ticketId, customerId, enabled, supabase])
 
   return { messages, loading, error }
 }
@@ -104,7 +107,8 @@ export async function sendMessage(
   customerId: string,
   channel: 'whatsapp' | 'telegram' | 'web',
   body: string,
-  senderId: string
+  senderId: string,
+  senderName: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
 
