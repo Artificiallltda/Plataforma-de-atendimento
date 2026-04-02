@@ -95,7 +95,7 @@ export class FinanceAgent {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-3.1-flash-latest'
+      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-3.1-flash-preview'
     });
   }
 

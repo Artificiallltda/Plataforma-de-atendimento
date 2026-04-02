@@ -125,7 +125,7 @@ export class SalesAgent {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_SALES || 'gemini-3.1-pro-latest'
+      model: process.env.GEMINI_MODEL_SALES || 'gemini-3.1-pro-preview'
     });
   }
 

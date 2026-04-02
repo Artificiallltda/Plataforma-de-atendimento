@@ -40,7 +40,7 @@ export class RouterAgent {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-latest' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-preview' });
   }
 
   async classify(message: string, context?: any): Promise<RouterOutput> {
