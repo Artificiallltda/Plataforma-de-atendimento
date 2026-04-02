@@ -27,7 +27,7 @@ export interface Customer extends CustomerInput {
 }
 
 /**
- * Buscar cliente por channel + channelUserId
+ * Buscar cliente por channel + channel_user_id
  * 
  * @param channel - Canal de origem
  * @param channelUserId - ID do usuário no canal (número WA, Telegram ID)
@@ -88,11 +88,6 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
 
 /**
  * Identificar ou criar cliente
- * 
- * Fluxo principal de identificação:
- * 1. Busca cliente existente por channel + channelUserId
- * 2. Se não existe, cria novo cliente
- * 3. Retorna cliente (existente ou criado)
  *
  * @param channel - Canal de origem
  * @param channelUserId - ID do usuário no canal
@@ -107,15 +102,7 @@ export async function identifyOrCreateCustomer(
 
   if (customer) {
     console.log('✅ Cliente identificado:', customer.id);
-    
-    // Se já tem guruSubscriptionId ou asaasCustomerId, não precisa enriquecer
-    if (customer.guruSubscriptionId || customer.asaasCustomerId) {
-      return customer;
-    }
-    
-    // Enriquecer dados se faltando
-    const enriched = await enrichCustomerData(customer, channelUserId);
-    return enriched || customer;
+    return customer;
   }
 
   // Criar novo cliente
@@ -125,108 +112,84 @@ export async function identifyOrCreateCustomer(
   });
 
   if (!customer) {
-    // Fallback: criar com dados mínimos
-    customer = await createCustomer({
-      channel: channel as 'whatsapp' | 'telegram' | 'web',
-      channelUserId
-    });
-
-    if (!customer) {
-      throw new Error('Falha ao criar cliente');
-    }
+    throw new Error('Falha ao criar cliente');
   }
 
-  // Enriquecer dados do novo cliente
-  await enrichCustomerData(customer, channelUserId);
+  // Enriquecer dados do novo cliente (em background para não travar resposta)
+  enrichCustomerData(customer, channelUserId).catch(err => {
+    console.warn('⚠️ Falha ao enriquecer dados (Guru/Asaas):', err.message);
+  });
 
   return customer;
 }
 
 /**
  * Enriquecer dados do cliente com GURU e Asaas
- * 
- * @param customer - Cliente existente
- * @param channelUserId - Telefone ou ID do canal
- * @returns Cliente enriquecido ou null se falhar
  */
 async function enrichCustomerData(
   customer: Customer,
   channelUserId: string
 ): Promise<Customer | null> {
   try {
-    // Normalizar telefone para E.164
     const phone = channelUserId.startsWith('+') ? channelUserId : `+55${channelUserId}`;
     
-    // Buscar no GURU por telefone
-    const guruCustomer = await guruService.findCustomerByPhone(phone);
-    if (guruCustomer) {
-      const updates: any = {};
-      
-      if (!customer.name && guruCustomer.name) {
-        updates.name = guruCustomer.name;
-      }
-      if (!customer.email && guruCustomer.email) {
-        updates.email = guruCustomer.email;
-      }
-      if (!customer.phone) {
-        updates.phone = guruCustomer.phone;
-      }
-      if (guruCustomer.subscriptions && guruCustomer.subscriptions.length > 0) {
-        updates.guruSubscriptionId = guruCustomer.subscriptions[0].id;
-      }
-      
-      if (Object.keys(updates).length > 0) {
-        await updateCustomer(customer.id, updates);
-        console.log('✅ Cliente enriquecido com dados do GURU:', customer.id);
-      }
-    }
-
-    // Buscar no Asaas por CPF (se tiver) ou email
-    if (customer.email) {
-      const asaasCustomer = await asaasService.findCustomerByEmail(customer.email);
-      if (asaasCustomer) {
+    // Tentar GURU
+    try {
+      const guruCustomer = await guruService.findCustomerByPhone(phone);
+      if (guruCustomer) {
         const updates: any = {};
+        if (!customer.name && guruCustomer.name) updates.name = guruCustomer.name;
+        if (!customer.email && guruCustomer.email) updates.email = guruCustomer.email;
+        if (guruCustomer.subscriptions?.length) updates.guru_subscription_id = guruCustomer.subscriptions[0].id;
         
-        if (!customer.name && asaasCustomer.name) {
-          updates.name = asaasCustomer.name;
+        if (Object.keys(updates).length > 0) {
+          await updateCustomer(customer.id, updates);
         }
-        updates.asaasCustomerId = asaasCustomer.id;
-        
-        await updateCustomer(customer.id, updates);
-        console.log('✅ Cliente enriquecido com dados do Asaas:', customer.id);
+      }
+    } catch (e) {
+      console.warn('⚠️ Guru indisponível ou erro de DNS');
+    }
+
+    // Tentar Asaas
+    if (customer.email) {
+      try {
+        const asaasCustomer = await asaasService.findCustomerByEmail(customer.email);
+        if (asaasCustomer) {
+          await updateCustomer(customer.id, { asaas_customer_id: asaasCustomer.id });
+        }
+      } catch (e) {
+        console.warn('⚠️ Asaas indisponível');
       }
     }
 
-    return { ...customer, ...customer };
+    return customer;
   } catch (error) {
-    console.error('⚠️ Erro ao enriquecer dados do cliente:', error);
-    return null; // Falha silenciosa - não bloqueia o fluxo
+    return customer;
   }
 }
 
 /**
- * Atualizar cliente com dados enriquecidos (GURU/Asaas)
- * 
- * @param customerId - ID do cliente
- * @param updates - Dados para atualizar
- * @returns Cliente atualizado ou null
+ * Atualizar cliente
  */
 export async function updateCustomer(
   customerId: string,
-  updates: Partial<{
-    name: string;
-    email: string;
-    phone: string;
-    guruSubscriptionId: string;
-    asaasCustomerId: string;
-  }>
+  updates: Partial<CustomerInput>
 ): Promise<Customer | null> {
+  const dbUpdates: any = { ...updates, updated_at: new Date().toISOString() };
+  
+  // Mapear campos para snake_case
+  if (updates.guruSubscriptionId) {
+    dbUpdates.guru_subscription_id = updates.guruSubscriptionId;
+    delete dbUpdates.guruSubscriptionId;
+  }
+  if (updates.asaasCustomerId) {
+    dbUpdates.asaas_customer_id = updates.asaasCustomerId;
+    delete dbUpdates.asaasCustomerId;
+  }
+
   const { data, error } = await supabase
     .from('customers')
-    .update({
-      ...updates,
-      updatedAt: new Date().toISOString()
-    })
+    .update(dbUpdates)
     .eq('id', customerId)
     .select()
     .single();
@@ -236,53 +199,12 @@ export async function updateCustomer(
     return null;
   }
 
-  console.log('✅ Cliente atualizado:', data.id);
   return data;
-}
-
-/**
- * Enriquecer cliente com dados do GURU/Asaas
- * 
- * @param customerId - ID do cliente
- * @param guruData - Dados do GURU (se disponíveis)
- * @param asaasData - Dados do Asaas (se disponíveis)
- * @returns Cliente enriquecido
- */
-export async function enrichCustomer(
-  customerId: string,
-  guruData?: { subscriptionId: string; plan?: string },
-  asaasData?: { asaasCustomerId: string; name?: string; email?: string }
-): Promise<Customer | null> {
-  const updates: any = {};
-
-  if (guruData?.subscriptionId) {
-    updates.guruSubscriptionId = guruData.subscriptionId;
-  }
-
-  if (asaasData) {
-    if (asaasData.asaasCustomerId) {
-      updates.asaasCustomerId = asaasData.asaasCustomerId;
-    }
-    if (asaasData.name) {
-      updates.name = asaasData.name;
-    }
-    if (asaasData.email) {
-      updates.email = asaasData.email;
-    }
-  }
-
-  if (Object.keys(updates).length === 0) {
-    // Nada para atualizar
-    return findCustomerByChannel('', '');
-  }
-
-  return await updateCustomer(customerId, updates);
 }
 
 export default {
   findCustomerByChannel,
   createCustomer,
   identifyOrCreateCustomer,
-  updateCustomer,
-  enrichCustomer
+  updateCustomer
 };

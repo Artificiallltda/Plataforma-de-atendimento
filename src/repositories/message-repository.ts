@@ -98,11 +98,11 @@ export async function getMessagesByTicket(
   rawPayload: any | null;
 }>> {
   const { data, error } = await supabase
-  .from('messages')
-  .select('id, external_id, channel, body, media_url, media_type, sender, timestamp, raw_payload')
-  .eq('ticket_id', ticketId)
-  .order('timestamp', { ascending: true })
-  .limit(limit);
+    .from('messages')
+    .select('id, external_id, channel, body, media_url, media_type, sender, timestamp, raw_payload')
+    .eq('ticket_id', ticketId)
+    .order('timestamp', { ascending: true })
+    .limit(limit);
 
   if (error) {
     console.error('❌ Erro ao buscar mensagens:', error);
@@ -124,7 +124,7 @@ export async function getMessagesByCustomer(
   limit: number = 10
 ): Promise<Array<{
   id: string;
-  ticketId: string | null;
+  ticket_id: string | null;
   body: string;
   sender: string;
   timestamp: string;
@@ -135,6 +135,7 @@ export async function getMessagesByCustomer(
     .eq('customer_id', customerId)
     .order('timestamp', { ascending: false })
     .limit(limit);
+
   if (error) {
     console.error('❌ Erro ao buscar mensagens do cliente:', error);
     return [];
