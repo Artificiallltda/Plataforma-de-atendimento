@@ -2,13 +2,13 @@
  * Repositório de Clientes
  * 
  * Persistência e identificação de clientes no Supabase.
- * 
- * @see docs/architecture/architecture.md#4-modelo-de-dados
  */
 
-import { supabase } from '../config/supabase';
+import { getSupabaseClient } from '../config/supabase';
 import { guruService } from '../integrations/guru-service';
 import { asaasService } from '../integrations/asaas-service';
+
+const supabase = getSupabaseClient();
 
 export interface CustomerInput {
   channel: 'whatsapp' | 'telegram' | 'web';
@@ -20,18 +20,21 @@ export interface CustomerInput {
   asaasCustomerId?: string;
 }
 
-export interface Customer extends CustomerInput {
+export interface Customer {
   id: string;
-  createdAt: string;
-  updatedAt: string;
+  channel: string;
+  channel_user_id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  guru_subscription_id: string | null;
+  asaas_customer_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
  * Buscar cliente por channel + channel_user_id
- * 
- * @param channel - Canal de origem
- * @param channelUserId - ID do usuário no canal (número WA, Telegram ID)
- * @returns Cliente encontrado ou null
  */
 export async function findCustomerByChannel(
   channel: string,
@@ -45,10 +48,7 @@ export async function findCustomerByChannel(
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // Not found
-      return null;
-    }
+    if (error.code === 'PGRST116') return null;
     console.error('❌ Erro ao buscar cliente:', error);
     return null;
   }
@@ -58,9 +58,6 @@ export async function findCustomerByChannel(
 
 /**
  * Criar novo cliente
- * 
- * @param customer - Dados do cliente
- * @returns Cliente criado
  */
 export async function createCustomer(customer: CustomerInput): Promise<Customer | null> {
   const { data, error } = await supabase
@@ -68,11 +65,11 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
     .insert({
       channel: customer.channel,
       channel_user_id: customer.channelUserId,
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      guru_subscription_id: customer.guruSubscriptionId,
-      asaas_customer_id: customer.asaasCustomerId
+      name: customer.name || null,
+      email: customer.email || null,
+      phone: customer.phone || null,
+      guru_subscription_id: customer.guruSubscriptionId || null,
+      asaas_customer_id: customer.asaasCustomerId || null
     })
     .select()
     .single();
@@ -88,16 +85,11 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
 
 /**
  * Identificar ou criar cliente
- *
- * @param channel - Canal de origem
- * @param channelUserId - ID do usuário no canal
- * @returns Cliente identificado
  */
 export async function identifyOrCreateCustomer(
   channel: string,
   channelUserId: string
 ): Promise<Customer> {
-  // Tentar buscar cliente existente
   let customer = await findCustomerByChannel(channel, channelUserId);
 
   if (customer) {
@@ -105,88 +97,46 @@ export async function identifyOrCreateCustomer(
     return customer;
   }
 
-  // Criar novo cliente
   customer = await createCustomer({
     channel: channel as 'whatsapp' | 'telegram' | 'web',
     channelUserId
   });
 
-  if (!customer) {
-    throw new Error('Falha ao criar cliente');
-  }
+  if (!customer) throw new Error('Falha ao criar cliente');
 
-  // Enriquecer dados do novo cliente (em background para não travar resposta)
-  enrichCustomerData(customer, channelUserId).catch(err => {
-    console.warn('⚠️ Falha ao enriquecer dados (Guru/Asaas):', err.message);
-  });
+  // Enriquecer dados (background)
+  enrichCustomerData(customer, channelUserId).catch(() => {});
 
   return customer;
 }
 
 /**
- * Enriquecer dados do cliente com GURU e Asaas
+ * Enriquecer dados do cliente
  */
-async function enrichCustomerData(
-  customer: Customer,
-  channelUserId: string
-): Promise<Customer | null> {
+async function enrichCustomerData(customer: Customer, channelUserId: string): Promise<void> {
   try {
     const phone = channelUserId.startsWith('+') ? channelUserId : `+55${channelUserId}`;
     
-    // Tentar GURU
-    try {
-      const guruCustomer = await guruService.findCustomerByPhone(phone);
-      if (guruCustomer) {
-        const updates: any = {};
-        if (!customer.name && guruCustomer.name) updates.name = guruCustomer.name;
-        if (!customer.email && guruCustomer.email) updates.email = guruCustomer.email;
-        if (guruCustomer.subscriptions?.length) updates.guru_subscription_id = guruCustomer.subscriptions[0].id;
-        
-        if (Object.keys(updates).length > 0) {
-          await updateCustomer(customer.id, updates);
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ Guru indisponível ou erro de DNS');
-    }
-
-    // Tentar Asaas
-    if (customer.email) {
-      try {
-        const asaasCustomer = await asaasService.findCustomerByEmail(customer.email);
-        if (asaasCustomer) {
-          await updateCustomer(customer.id, { asaas_customer_id: asaasCustomer.id });
-        }
-      } catch (e) {
-        console.warn('⚠️ Asaas indisponível');
+    const guruCustomer = await guruService.findCustomerByPhone(phone).catch(() => null);
+    if (guruCustomer) {
+      const updates: any = {};
+      if (!customer.name && guruCustomer.name) updates.name = guruCustomer.name;
+      if (!customer.email && guruCustomer.email) updates.email = guruCustomer.email;
+      if (guruCustomer.subscriptions?.length) updates.guru_subscription_id = guruCustomer.subscriptions[0].id;
+      
+      if (Object.keys(updates).length > 0) {
+        await updateCustomer(customer.id, updates);
       }
     }
-
-    return customer;
-  } catch (error) {
-    return customer;
-  }
+  } catch (error) {}
 }
 
 /**
  * Atualizar cliente
  */
-export async function updateCustomer(
-  customerId: string,
-  updates: Partial<CustomerInput>
-): Promise<Customer | null> {
-  const dbUpdates: any = { ...updates, updated_at: new Date().toISOString() };
+export async function updateCustomer(customerId: string, updates: any): Promise<Customer | null> {
+  const dbUpdates = { ...updates, updated_at: new Date().toISOString() };
   
-  // Mapear campos para snake_case
-  if (updates.guruSubscriptionId) {
-    dbUpdates.guru_subscription_id = updates.guruSubscriptionId;
-    delete dbUpdates.guruSubscriptionId;
-  }
-  if (updates.asaasCustomerId) {
-    dbUpdates.asaas_customer_id = updates.asaasCustomerId;
-    delete dbUpdates.asaasCustomerId;
-  }
-
   const { data, error } = await supabase
     .from('customers')
     .update(dbUpdates)

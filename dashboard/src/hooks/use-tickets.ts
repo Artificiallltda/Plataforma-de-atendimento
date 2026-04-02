@@ -6,35 +6,34 @@ import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface Ticket {
   id: string
-  customerId: string
+  customer_id: string
   channel: 'whatsapp' | 'telegram' | 'web'
-  sector: 'suporte' | 'financeiro' | 'comercial'
+  sector: string | null
   intent: string | null
   status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido'
   priority: 'critica' | 'alta' | 'media' | 'baixa'
-  currentAgent: string | null
-  assignedTo: string | null
-  csatScore: number | null
-  routerConfidence: number | null
-  createdAt: string
-  resolvedAt: string | null
+  current_agent: string | null
+  assigned_to: string | null
+  csat_score: number | null
+  router_confidence: number | null
+  created_at: string
+  resolved_at: string | null
   customer?: {
     name: string | null
     phone: string | null
   }
 }
 
-interface UseTicketsOptions {
+interface UseTicketsProps {
   sector?: string
   status?: string
   enabled?: boolean
 }
 
-export function useTickets(options: UseTicketsOptions = {}) {
-  const { sector, status, enabled = true } = options
+export function useTickets({ sector, status, enabled = true }: UseTicketsProps = {}) {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<any>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -53,55 +52,33 @@ export function useTickets(options: UseTicketsOptions = {}) {
               phone
             )
           `)
-          .order('createdAt', { ascending: false })
 
-        // Aplicar filtros
-        if (sector && sector !== 'all') {
-          query = query.eq('sector', sector)
-        }
-        if (status && status !== 'all') {
-          query = query.eq('status', status)
-        }
+        if (sector) query = query.eq('sector', sector)
+        if (status) query = query.eq('status', status)
 
-        const { data, error } = await query
+        const { data, error: fetchError } = await query.order('created_at', { ascending: false })
 
-        if (error) throw error
+        if (fetchError) throw fetchError
         setTickets(data || [])
-        setError(null)
       } catch (err: any) {
         console.error('Erro ao carregar tickets:', err)
-        setError(err.message)
+        setError(err)
       } finally {
         setLoading(false)
       }
     }
 
-    // Carregar tickets iniciais
-    loadTickets()
-
-    // Assinar atualizações em tempo real
     if (enabled) {
+      loadTickets()
+
+      // Realtime subscription
       channel = supabase
-        .channel('tickets-channel')
+        .channel('tickets-changes')
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tickets'
-          },
-          (payload) => {
-            console.log('🔔 Ticket atualizado:', payload)
-            
-            if (payload.eventType === 'INSERT') {
-              setTickets(prev => [payload.new as Ticket, ...prev])
-            } else if (payload.eventType === 'UPDATE') {
-              setTickets(prev => 
-                prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } as Ticket : t)
-              )
-            } else if (payload.eventType === 'DELETE') {
-              setTickets(prev => prev.filter(t => t.id !== payload.old.id))
-            }
+          { event: '*', schema: 'public', table: 'tickets' },
+          () => {
+            loadTickets()
           }
         )
         .subscribe()
