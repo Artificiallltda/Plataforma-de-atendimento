@@ -95,6 +95,13 @@ export async function identifyOrCreateCustomer(
 
   if (customer) {
     console.log('✅ Cliente identificado:', customer.id);
+    
+    // Se o cliente já existia mas não tinha nome, e agora temos um nome, atualizar imediatamente
+    if (name && (!customer.name || customer.name === 'Identificando...')) {
+      const updated = await updateCustomer(customer.id, { name });
+      if (updated) return updated;
+    }
+    
     return customer;
   }
 
