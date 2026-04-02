@@ -141,7 +141,7 @@ export function Inbox({ ticket, senderId, onBack }: InboxProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-hidden bg-white">
+      <div className="flex-1 flex flex-col overflow-hidden bg-white border-y border-slate-100">
         <MessageList messages={messages} loading={loading} />
       </div>
 
