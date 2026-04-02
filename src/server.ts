@@ -5,6 +5,7 @@
  */
 
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import { registerWhatsappWebhook } from './webhooks/whatsapp/whatsapp-webhook';
 import { registerTelegramWebhook } from './webhooks/telegram/telegram-webhook';
 import { registerAdminAuthRoutes } from './webhooks/admin-auth';
@@ -14,6 +15,18 @@ const fastify = Fastify({
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug'
   }
+});
+
+// Configurar CORS para o Dashboard
+fastify.register(cors, {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://plataformadeatendimentoartificiall.up.railway.app',
+    'https://artificiall.ai'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
 });
 
 // Health check
