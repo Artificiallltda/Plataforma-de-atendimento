@@ -16,6 +16,10 @@ export interface Message {
   sender_id: string | null
   timestamp: string
   raw_payload: any | null
+  agent?: {
+    name: string
+    sector: string
+  }
 }
 
 interface UseMessagesOptions {
@@ -41,7 +45,7 @@ export function useMessages(options: UseMessagesOptions) {
         
         const { data, error } = await supabase
           .from('messages')
-          .select('*')
+          .select('*, agent:agents(name, sector)')
           .eq('ticket_id', ticketId)
           .order('timestamp', { ascending: true })
 

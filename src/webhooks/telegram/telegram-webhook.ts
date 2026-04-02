@@ -135,9 +135,24 @@ function setupOutboundSync(provider: TelegramProvider) {
 
             console.log(`📡 Enviando mensagem para o ChatID Telegram: ${customer.channel_user_id}`);
             
+            // BUSCAR NOME DO AGENTE PARA IDENTIFICAÇÃO (OPCIONAL MAS RECOMENDADO)
+            let agentPrefix = '';
+            if (newMessage.sender === 'human' && newMessage.sender_id) {
+              const { data: agent } = await supabase
+                .from('agents')
+                .select('name, sector')
+                .eq('id', newMessage.sender_id)
+                .single();
+              
+              if (agent) {
+                const sectorLabel = agent.sector ? ` (${agent.sector.charAt(0).toUpperCase() + agent.sector.slice(1)})` : '';
+                agentPrefix = `*${agent.name}${sectorLabel}*: `;
+              }
+            }
+
             const result = await provider.sendMessage({
               to: customer.channel_user_id, // AGORA USANDO O ID CORRETO (NÚMERO)
-              text: newMessage.body,
+              text: `${agentPrefix}${newMessage.body}`,
               parseMode: 'Markdown'
             });
             console.log(`✅ Resultado do envio para Telegram: ${result ? 'Sucesso' : 'Falha'}`);

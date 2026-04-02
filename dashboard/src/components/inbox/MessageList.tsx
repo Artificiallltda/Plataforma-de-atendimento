@@ -71,7 +71,14 @@ export function MessageList({ messages, loading }: MessageListProps) {
               <div className={`flex flex-col ${isCustomer ? 'items-start' : 'items-end'}`}>
                 {/* Header */}
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                  <span className="font-medium">{config.label}</span>
+                  <span className="font-bold text-slate-700">
+                    {message.agent?.name || config.label}
+                    {message.agent?.sector && (
+                      <span className="text-[10px] font-medium text-slate-400 ml-1">
+                        ({message.agent.sector})
+                      </span>
+                    )}
+                  </span>
                   <span>{channelIcon}</span>
                   <span>{formatTime(message.timestamp)}</span>
                 </div>
