@@ -5,7 +5,7 @@ import { sendMessage, updateTicketStatus } from '@/hooks/use-messages'
 
 interface MessageInputProps {
   ticketId: string
-  customerId: string
+  customer_id: string
   channel: 'whatsapp' | 'telegram' | 'web'
   senderId: string
   onMessageSent?: () => void
@@ -20,7 +20,7 @@ const quickActions = [
 
 export function MessageInput({
   ticketId,
-  customerId,
+  customer_id,
   channel,
   senderId,
   onMessageSent,
@@ -48,7 +48,7 @@ export function MessageInput({
     setSending(true)
     setError(null)
 
-    const result = await sendMessage(ticketId, customerId, channel, message.trim(), senderId, agentName)
+    const result = await sendMessage(ticketId, customer_id, channel, message.trim(), senderId, agentName)
 
     if (result.success) {
       setMessage('')

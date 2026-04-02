@@ -33,7 +33,7 @@ export function Inbox({ ticket, senderId, onBack }: InboxProps) {
   const router = useRouter()
   const { messages, loading } = useMessages({ 
     ticketId: ticket.id,
-    customerId: (ticket as any).customer_id || ticket.customer_id 
+    customer_id: (ticket as any).customer_id || ticket.customer_id 
   })
   const [currentStatus, setCurrentStatus] = useState(ticket.status)
 
@@ -148,7 +148,7 @@ export function Inbox({ ticket, senderId, onBack }: InboxProps) {
       {/* Input */}
       <MessageInput
         ticketId={ticket.id}
-        customerId={(ticket as any).customer_id}
+        customer_id={(ticket as any).customer_id || ticket.customer_id}
         channel={ticket.channel}
         senderId={senderId}
         onMessageSent={() => {}}

@@ -24,12 +24,12 @@ export interface Message {
 
 interface UseMessagesOptions {
   ticketId: string
-  customerId: string
+  customer_id: string
   enabled?: boolean
 }
 
 export function useMessages(options: UseMessagesOptions) {
-  const { ticketId, customerId, enabled = true } = options
+  const { ticketId, customer_id, enabled = true } = options
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +41,7 @@ export function useMessages(options: UseMessagesOptions) {
 
     const loadMessages = async () => {
       try {
-        if (!customerId) return
+        if (!customer_id) return
         setLoading(true)
         
         // BUSCA POR CUSTOMER_ID: Garante que o histórico do robô (em outros tickets) 
@@ -49,7 +49,7 @@ export function useMessages(options: UseMessagesOptions) {
         const { data, error } = await supabase
           .from('messages')
           .select('*, agent:agents(name, sector)')
-          .eq('customer_id', customerId)
+          .eq('customer_id', customer_id)
           .order('timestamp', { ascending: true })
 
         if (error) throw error
@@ -66,28 +66,33 @@ export function useMessages(options: UseMessagesOptions) {
     // Carregar mensagens iniciais
     loadMessages()
 
-    // Assinar atualizações em tempo real baseadas no CUSTOMER_ID
-    if (enabled && customerId) {
+    // Assinar atualizações em tempo real baseadas no customer_id
+    if (enabled && customer_id) {
+      // Registrar evento no console para debug de Realtime
+      console.log(`🔌 Conectando Realtime para Cliente: ${customer_id}`);
+
       channel = supabase
-        .channel(`messages-${customerId}`)
+        .channel(`chat-${customer_id}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
-            filter: `customer_id=eq.${customerId}`
+            filter: `customer_id=eq.${customer_id}`
           },
           (payload) => {
-            console.log('🔔 Nova mensagem recebida via Realtime:', payload.new)
+            console.log('🔔 Nova mensagem via Realtime!', payload.new);
             setMessages(prev => {
-              // Evitar duplicidade se o loadMessages e o realtime dispararem juntos
-              if (prev.some(m => m.id === payload.new.id)) return prev
-              return [...prev, payload.new as Message]
-            })
+              // Evitar duplicidade
+              if (prev.some(m => m.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Message];
+            });
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log(`📡 Status da conexão Realtime: ${status}`);
+        })
 
       channelRef.current = channel
     }
@@ -97,14 +102,14 @@ export function useMessages(options: UseMessagesOptions) {
         supabase.removeChannel(channel)
       }
     }
-  }, [ticketId, customerId, enabled, supabase])
+  }, [ticketId, customer_id, enabled, supabase])
 
   return { messages, loading, error }
 }
 
 export async function sendMessage(
   ticketId: string,
-  customerId: string,
+  customer_id: string,
   channel: 'whatsapp' | 'telegram' | 'web',
   body: string,
   senderId: string,
@@ -117,13 +122,14 @@ export async function sendMessage(
       .from('messages')
       .insert({
         ticket_id: ticketId,
-        customer_id: customerId,
+        customer_id: customer_id,
         channel,
         body,
         sender: 'human',
         sender_id: senderId,
         external_id: `human-${Date.now()}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        raw_payload: { agent_name: senderName } 
       })
 
     if (error) throw error
