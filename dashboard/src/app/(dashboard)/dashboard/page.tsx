@@ -11,9 +11,9 @@ export default function DashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [sector, setSector] = useState<string>('')
+  const [sector, setSector] = useState<string>('Geral')
   const supabase = createClient()
-  const { tickets, loading: ticketsLoading } = useTickets({ sector: sector === 'supervisor' ? undefined : sector, enabled: true })
+  const { tickets, loading: ticketsLoading } = useTickets({ sector: sector === 'supervisor' || sector === 'Geral' ? undefined : sector, enabled: true })
 
   useEffect(() => {
     const loadData = async () => {
@@ -33,7 +33,11 @@ export default function DashboardPage() {
         .eq('email', user.email)
         .single()
 
-      setSector(agent?.sector || 'unknown')
+      if (agent?.sector) {
+        setSector(agent.sector)
+      } else {
+        setSector('Supervisor')
+      }
       setLoading(false)
     }
 

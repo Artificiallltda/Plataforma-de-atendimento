@@ -18,6 +18,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+import Image from 'next/image'
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -29,7 +31,7 @@ interface ModernLayoutProps {
 export function ModernLayout({ children }: ModernLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [role, setRole] = useState<string>('')
+  const [role, setRole] = useState<string>('Supervisor')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -49,7 +51,9 @@ export function ModernLayout({ children }: ModernLayoutProps) {
         .eq('email', user.email)
         .single()
       
-      setRole(agent?.sector?.toLowerCase() || 'supervisor')
+      if (agent?.sector) {
+        setRole(agent.sector.charAt(0).toUpperCase() + agent.sector.slice(1))
+      }
     }
     getUser()
   }, [router, supabase])
@@ -75,17 +79,24 @@ export function ModernLayout({ children }: ModernLayoutProps) {
           isSidebarOpen ? "w-64" : "w-20"
         )}
       >
-        <div className="h-20 flex items-center px-6 border-b border-slate-100">
-          <div className="h-10 w-10 premium-gradient rounded-xl flex items-center justify-center text-white font-bold text-xl">
-            A
+        {/* Logo Area */}
+        <div className="h-20 flex items-center px-4 border-b border-slate-100 overflow-hidden">
+          <div className="relative h-10 w-32 flex-shrink-0">
+            <Image 
+              src="/brand/logo.png" 
+              alt="Artificiall" 
+              fill 
+              className="object-contain"
+              priority
+            />
           </div>
           {isSidebarOpen && (
             <motion.span 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="ml-3 font-bold text-slate-800 text-lg"
+              className="ml-1 font-black text-blue-600 text-xl tracking-tighter"
             >
-              Artificiall <span className="text-blue-600">PAA</span>
+              PAA
             </motion.span>
           )}
         </div>
