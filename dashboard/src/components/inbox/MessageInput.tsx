@@ -39,12 +39,16 @@ export function MessageInput({
       
       // 1. Tentar buscar do Perfil Logado (Auth) - Prioridade Máxima
       const { data: { user } } = await supabase.auth.getUser()
-      if (user?.user_metadata?.full_name) {
-        setAgentName(user.user_metadata.full_name)
+      // PRIORIDADE DE NOME: Metadados -> Perfil -> Email
+      const profileName = user?.user_metadata?.full_name || user?.user_metadata?.name || (user as any)?.display_name
+      
+      if (profileName) {
+        setAgentName(profileName)
       } else if (user?.email) {
-        // Fallback: prefixo do email (ex: gean@artificiall.ai -> Gean)
+        // Fallback inteligente: Se for 'ceo@...', tenta deixar bonito
         const nameFromEmail = user.email.split('@')[0]
-        setAgentName(nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1))
+        const formatted = nameFromEmail === 'ceo' ? 'Gean (CEO)' : nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1)
+        setAgentName(formatted)
       }
     }
     if (senderId) fetchAgent()

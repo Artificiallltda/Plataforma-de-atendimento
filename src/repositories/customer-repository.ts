@@ -150,19 +150,20 @@ async function enrichCustomerData(customer: Customer, channelUserId: string): Pr
  * Atualizar cliente
  */
 export async function updateCustomer(customerId: string, updates: any): Promise<Customer | null> {
-  const { data, error } = await supabase
-    .from('customers')
+  // Fix: Convertendo para 'any' para evitar erros de tipagem do Supabase SDK
+  const { data, error } = await (supabase
+    .from('customers') as any)
     .update(updates)
     .eq('id', customerId)
     .select()
-    .single();
+    .single()
 
   if (error) {
-    console.error('❌ Erro ao atualizar cliente:', error);
-    return null;
+    console.error(`❌ Erro ao atualizar cliente ${customerId}:`, error)
+    return null
   }
 
-  return data;
+  return data as Customer
 }
 
 export default {

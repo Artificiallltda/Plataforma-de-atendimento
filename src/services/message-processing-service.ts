@@ -144,6 +144,16 @@ export async function processIncomingMessage(message: {
       }).eq('id', finalTicketId);
     }
 
+    // 4c. SE JÁ ESTIVER EM MÃOS HUMANAS, PARAMOS AQUI (FIM DO ATROPELO)
+    if (['em_atendimento', 'aguardando_humano'].includes((currentStatus as any).status)) {
+      console.log(`🔕 [Bot] Ticket ${finalTicketId} está sob controle humano. Silenciando IA.`);
+      return { 
+        ticketId: finalTicketId, 
+        clarificationMessage: null,
+        sector: sector
+      };
+    }
+
     // 5. [CRÍTICO] PERSISTIR RESPOSTA DA IA NO BANCO DE DADOS
     if (agentResponse) {
       const { error: saveError } = await (supabase.from('messages') as any).insert({
