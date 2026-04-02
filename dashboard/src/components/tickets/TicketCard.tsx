@@ -32,7 +32,7 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
   const channelIcon = channelIcons[ticket.channel]
   
   // Calcular tempo de espera
-  const waitTime = calculateWaitTime(ticket.createdAt)
+  const waitTime = calculateWaitTime(ticket.created_at)
 
   return (
     <div
@@ -67,9 +67,9 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
       {/* Footer */}
       <div className="flex justify-between items-center text-xs text-gray-500">
         <span>⏱️ {waitTime}</span>
-        {ticket.currentAgent && (
+        {ticket.current_agent && (
           <span className="flex items-center gap-1">
-            🤖 {ticket.currentAgent}
+            🤖 {ticket.current_agent}
           </span>
         )}
         {ticket.priority === 'critica' && (

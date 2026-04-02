@@ -29,7 +29,7 @@ export function useKpis(enabled: boolean = true) {
       try {
         setLoading(true)
 
-        // Buscar KPIs principais
+        // Buscar KPIs principais (SNAKE_CASE)
         const [
           ticketsAbertos,
           ticketsCriticos,
@@ -57,22 +57,22 @@ export function useKpis(enabled: boolean = true) {
           // TMR médio
           supabase
             .from('tickets')
-            .select('createdAt, resolvedAt')
+            .select('created_at, resolved_at')
             .eq('status', 'resolvido')
-            .not('resolvedAt', 'is', null),
+            .not('resolved_at', 'is', null),
 
           // CSAT médio
           supabase
             .from('tickets')
-            .select('csatScore')
-            .not('csatScore', 'is', null),
+            .select('csat_score')
+            .not('csat_score', 'is', null),
 
           // Bot containment (tickets resolvidos sem humano)
           supabase
             .from('tickets')
-            .select('assignedTo', { count: 'exact', head: true })
+            .select('assigned_to', { count: 'exact', head: true })
             .eq('status', 'resolvido')
-            .is('assignedTo', null),
+            .is('assigned_to', null),
 
           // Total tickets resolvidos
           supabase
@@ -84,7 +84,7 @@ export function useKpis(enabled: boolean = true) {
           supabase
             .from('agents')
             .select('id', { count: 'exact', head: true })
-            .eq('isOnline', true),
+            .eq('is_online', true),
 
           // Fila por setor
           supabase
@@ -106,12 +106,12 @@ export function useKpis(enabled: boolean = true) {
             .neq('status', 'resolvido')
         ])
 
-        // Calcular TMR médio (em segundos)
+        // Calcular TMR médio
         let tmrMedio = 0
         if (tmr.data && tmr.data.length > 0) {
           const totalSeconds = tmr.data.reduce((acc, t) => {
-            const created = new Date(t.createdAt).getTime()
-            const resolved = new Date(t.resolvedAt!).getTime()
+            const created = new Date(t.created_at).getTime()
+            const resolved = new Date(t.resolved_at!).getTime()
             return acc + (resolved - created) / 1000
           }, 0)
           tmrMedio = Math.round(totalSeconds / tmr.data.length)
@@ -120,15 +120,15 @@ export function useKpis(enabled: boolean = true) {
         // Calcular CSAT médio
         let csatMedio = 0
         if (csat.data && csat.data.length > 0) {
-          const total = csat.data.reduce((acc, t) => acc + (t.csatScore || 0), 0)
+          const total = csat.data.reduce((acc, t) => acc + (t.csat_score || 0), 0)
           csatMedio = Math.round((total / csat.data.length) * 10) / 10
         }
 
         // Calcular Bot Containment Rate
         let botContainmentRate = 0
-        const totalResolvidos = botContainment.count || 0
-        if (totalResolvidos > 0) {
-          botContainmentRate = Math.round((botContainment.count! / totalResolvidos) * 100)
+        if (botContainment.count && ticketsAbertos.count) {
+          const total = (ticketsAbertos.count || 0) + (botContainment.count || 0)
+          botContainmentRate = Math.round((botContainment.count / total) * 100)
         }
 
         setKpis({
@@ -152,31 +152,16 @@ export function useKpis(enabled: boolean = true) {
       }
     }
 
-    loadKpis()
-
-    // Assinar atualizações em tempo real
     if (enabled) {
+      loadKpis()
       channel = supabase
         .channel('kpis-channel')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tickets'
-          },
-          () => {
-            // Recarregar KPIs quando tickets mudarem
-            loadKpis()
-          }
-        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => loadKpis())
         .subscribe()
     }
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
+      if (channel) supabase.removeChannel(channel)
     }
   }, [enabled, supabase])
 

@@ -38,18 +38,13 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
 
-        // Buscar feedback CSAT
+        // Buscar feedback CSAT (SNAKE_CASE)
         let csatQuery = supabase
           .from('feedback')
           .select('*')
           .eq('type', 'csat')
-          .gte('createdAt', startDate.toISOString())
-          .order('createdAt', { ascending: true })
-
-        if (sector && sector !== 'all') {
-          // CSAT não tem setor direto, precisaríamos juntar com tickets
-          // Simplificação: buscar todos e filtrar depois
-        }
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true })
 
         const { data: csatData } = await csatQuery
 
@@ -58,8 +53,8 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
           .from('feedback')
           .select('*')
           .eq('type', 'nps')
-          .gte('createdAt', startDate.toISOString())
-          .order('createdAt', { ascending: true })
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true })
 
         const { data: npsData } = await npsQuery
 
@@ -70,7 +65,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         const lowCsatComments: FeedbackData['lowCsatComments'] = []
 
         csatData?.forEach(f => {
-          const date = new Date(f.createdAt).toISOString().split('T')[0]
+          const date = new Date(f.created_at).toISOString().split('T')[0]
           const existing = csatByDayMap.get(date) || { sum: 0, count: 0 }
           existing.sum += f.score
           existing.count++
@@ -84,7 +79,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
               id: f.id,
               score: f.score,
               comment: f.comment,
-              createdAt: f.createdAt
+              createdAt: f.created_at
             })
           }
         })
@@ -107,7 +102,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         const detractorComments: FeedbackData['detractorComments'] = []
 
         npsData?.forEach(f => {
-          const date = new Date(f.createdAt).toISOString().split('T')[0]
+          const date = new Date(f.created_at).toISOString().split('T')[0]
           const existing = npsByDayMap.get(date) || { promoters: 0, passives: 0, detractors: 0 }
 
           if (f.score >= 9) {
@@ -124,7 +119,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
                 id: f.id,
                 score: f.score,
                 comment: f.comment,
-                createdAt: f.createdAt
+                createdAt: f.created_at
               })
             }
           }
