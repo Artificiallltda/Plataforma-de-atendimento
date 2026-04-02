@@ -51,10 +51,10 @@ export function useMessages(options: UseMessagesOptions) {
 
         setLoading(true)
         
-        // Query simplificada para evitar Erro 400 do Supabase
+        // Query simplificada ao máximo para matar o Erro 400
         const { data, error } = await supabase
           .from('messages')
-          .select('*, agent:agents(name, sector)')
+          .select('*')
           .eq('customer_id', customer_id)
 
         if (error) throw error
