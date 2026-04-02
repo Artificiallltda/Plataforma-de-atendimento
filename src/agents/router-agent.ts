@@ -3,12 +3,12 @@
  * 
  * Orquestrador central do sistema multi-agentes (MAS).
  * Classifica intenção do cliente e roteia para agente especializado.
- * 
- * Modelo: Gemini 2.5 Flash (Jan 2026) - Latência < 500ms
  */
 
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { supabase } from '../config/supabase';
+import { getSupabaseClient } from '../config/supabase';
+
+const supabase = getSupabaseClient();
 
 export type Sector = 'suporte' | 'financeiro' | 'comercial';
 export type AgentType = 'router' | 'support' | 'finance' | 'sales' | 'escalation' | 'human' | 'feedback';
@@ -31,27 +31,16 @@ export interface CustomerContext {
 }
 
 const ROUTER_SYSTEM_PROMPT = `
-Você é o **PAA Router**, a inteligência de triagem estratégica da Artificiall. Você é o primeiro contato do cliente e sua missão é garantir uma recepção de elite.
+Você é o PAA Router da Artificiall.
+Responda EXCLUSIVAMENTE em formato JSON.
 
-**PERSONALIDADE:**
-- Sofisticado, ágil e extremamente educado.
-- Você é o anfitrião que abre as portas e direciona o cliente para o especialista correto.
-
-SUA FUNÇÃO:
-1. Classificar a intenção do cliente com precisão cirúrgica.
-2. Identificar a intenção específica (ex: "erro_de_acesso", "reembolso", "upgrade_plano")
-3. Se a confiança for < 0.75, você deve ser gentil e pedir mais detalhes.
-
-SETORES: suporte, financeiro, comercial.
-
-FORMATO DE RESPOSTA (JSON):
 {
   "sector": "suporte|financeiro|comercial",
-  "intent": "descricao_em_snake_case",
-  "confidence": 0.0-1.0,
+  "intent": "string_snake_case",
+  "confidence": 0.9,
   "suggestedAgent": "support|finance|sales",
-  "needsClarification": true|false,
-  "reasoning": "explicacao"
+  "needsClarification": false,
+  "reasoning": "texto"
 }
 `;
 
@@ -66,27 +55,43 @@ export class RouterAgent {
   }
 
   async classify(message: string, context?: CustomerContext): Promise<RouterOutput> {
-    const prompt = `Contexto do Cliente: ${JSON.stringify(context)}\nMensagem: ${message}`;
-    const result = await this.model.generateContent([ROUTER_SYSTEM_PROMPT, prompt]);
-    const response = result.response.text();
-    return JSON.parse(response.replace(/```json|```/g, '').trim());
+    try {
+      const prompt = `Contexto: ${JSON.stringify(context)}\nMensagem: ${message}`;
+      const result = await this.model.generateContent([ROUTER_SYSTEM_PROMPT, prompt]);
+      const text = result.response.text();
+      
+      // Limpeza de JSON robusta
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('IA não retornou JSON válido');
+      
+      return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+      console.error('❌ Erro ao classificar:', error);
+      // Fallback seguro para não crashar
+      return {
+        sector: 'suporte',
+        intent: 'erro_classificacao',
+        confidence: 0.5,
+        suggestedAgent: 'support',
+        needsClarification: true,
+        reasoning: 'Erro no parse de IA'
+      };
+    }
   }
 
   async getCustomerContext(customerId: string): Promise<CustomerContext | null> {
     try {
-      // 1. Buscar dados do cliente (SNAKE_CASE)
       const { data: customer } = await supabase
         .from('customers')
-        .select('id, name, guru_subscription_id')
+        .select('*')
         .eq('id', customerId)
         .single();
 
       if (!customer) return null;
 
-      // 2. Buscar tickets recentes (CORREÇÃO AQUI: customer_id)
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('id, sector, intent, status, csat_score')
+        .select('*')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -101,18 +106,18 @@ export class RouterAgent {
         recentTickets: tickets || []
       };
     } catch (error) {
-      console.error('❌ Erro ao buscar contexto do cliente:', error);
       return null;
     }
   }
 
   async logDecision(ticketId: string, output: RouterOutput, durationMs: number): Promise<void> {
+    if (!ticketId || ticketId === '') return;
     try {
       await supabase.from('agent_logs').insert({
         ticket_id: ticketId,
         agent_type: 'router',
         action: 'classified',
-        input: { message: '...' },
+        input: { log: 'IA processada' },
         output,
         confidence: output.confidence,
         duration_ms: durationMs
