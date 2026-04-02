@@ -83,29 +83,37 @@ export function useMessages(options: UseMessagesOptions) {
       console.log(`🔌 [Realtime] Conectando canal: chat-${customer_id}`);
 
       channel = supabase
-        .channel(`chat-${customer_id}`)
+        .channel(`chat-global-${customer_id}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'messages',
-            filter: `customer_id=eq.${customer_id}`
+            table: 'messages'
+            // Filtro removido para maior robustez
           },
           (payload) => {
-            console.log('🔔 [Realtime] Nova mensagem detectada!', payload.new);
+            console.log('🔔 [Realtime] Nova mensagem detectada no banco!', payload.new);
             
             const newMessage = payload.new as any;
+            
+            // FILTRAGEM MANUAL NO JS: Muito mais resiliente a IDs e tipos
+            const msgCustomerId = newMessage.customer_id || newMessage.customerId;
+            if (msgCustomerId !== customer_id) {
+              console.log(`⏭️ [Realtime] Mensagem ignorada (Cliente ${msgCustomerId} != ${customer_id})`);
+              return;
+            }
+
             const normalizedMsg: Message = {
               ...newMessage,
-              customer_id: newMessage.customer_id || newMessage.customerId,
+              customer_id: msgCustomerId,
               ticket_id: newMessage.ticket_id || newMessage.ticketId
             };
 
             setMessages(prev => {
               if (prev.some(m => m.id === normalizedMsg.id)) return prev;
               const newList = [...prev, normalizedMsg];
-              console.log(`📈 [Realtime] UI Atualizada. Total: ${newList.length}`);
+              console.log(`📈 [Realtime] UI Atualizada com sucesso!`);
               return newList;
             });
           }

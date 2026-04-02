@@ -37,14 +37,7 @@ export function MessageInput({
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       
-      // 1. Tentar buscar da tabela de agentes
-      const { data: agentData } = await supabase.from('agents').select('name').eq('id', senderId).single()
-      if (agentData?.name) {
-        setAgentName(agentData.name)
-        return
-      }
-
-      // 2. Tentar buscar do Perfil Logado (Auth)
+      // 1. Tentar buscar do Perfil Logado (Auth) - Prioridade Máxima
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.user_metadata?.full_name) {
         setAgentName(user.user_metadata.full_name)
