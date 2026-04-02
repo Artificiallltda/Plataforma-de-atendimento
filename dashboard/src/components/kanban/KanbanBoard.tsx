@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { Ticket } from '@/hooks/use-tickets'
 import { KanbanCard } from './KanbanCard'
@@ -40,6 +41,7 @@ const columns = [
 ]
 
 export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) {
+  const router = useRouter()
   const [boardData, setBoardData] = useState<Record<string, Ticket[]>>({})
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
@@ -201,6 +203,7 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                               <KanbanCard 
                                 ticket={ticket} 
                                 isDragging={snapshot.isDragging}
+                                onClick={(t) => router.push(`/tickets/${t.id}`)}
                               />
                             </div>
                           )}
