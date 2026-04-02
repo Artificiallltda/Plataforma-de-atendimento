@@ -55,10 +55,13 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
     negativo: { icon: TrendingDown, color: 'text-rose-500', bg: 'bg-rose-50' }
   }
   
+  console.log('🔍 DEBUG TICKET:', ticket.id, (ticket as any).customer)
+
   const SentimentIcon = sentimentConfig[sentiment].icon
 
-  const customerData = Array.isArray(ticket.customer) ? ticket.customer[0] : ticket.customer
-  const customerName = customerData?.name || 'Cliente Indisponível'
+  const customerData = (ticket as any).customer
+  const customerName = (Array.isArray(customerData) ? customerData[0]?.name : customerData?.name) || 'Identificando...'
+  const customerPhone = (Array.isArray(customerData) ? customerData[0]?.phone : customerData?.phone) || ''
   
   const intentMap: Record<string, string> = {
     'saudacao': '👋 Saudação / Início',

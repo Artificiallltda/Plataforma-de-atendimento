@@ -147,6 +147,11 @@ export function getSupabaseClient(): SupabaseClient<Database> {
       },
       db: {
         schema: 'public'
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
       }
     });
 

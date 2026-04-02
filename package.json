@@ -57,7 +57,8 @@
     "test:coverage": "vitest run --coverage",
     "dev": "tsx watch src/server.ts",
     "build": "echo 'Build skip'",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "reset-db": "tsx scripts/reset-db.ts"
   },
   "keywords": [],
   "author": "",
