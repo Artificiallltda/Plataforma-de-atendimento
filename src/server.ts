@@ -7,6 +7,8 @@
 import Fastify from 'fastify';
 import { registerWhatsappWebhook } from './webhooks/whatsapp/whatsapp-webhook';
 import { registerTelegramWebhook } from './webhooks/telegram/telegram-webhook';
+import { registerAdminAuthRoutes } from './webhooks/admin-auth';
+import { registerFeedbackTriggerRoutes } from './webhooks/feedback-trigger';
 
 const fastify = Fastify({
   logger: {
@@ -25,6 +27,8 @@ fastify.get('/health', async (request, reply) => {
 
 // Registrar webhooks
 fastify.register(registerWhatsappWebhook);
+fastify.register(registerAdminAuthRoutes);
+fastify.register(registerFeedbackTriggerRoutes);
 
 // Registrar Telegram (se token configurado)
 if (process.env.TELEGRAM_BOT_TOKEN) {

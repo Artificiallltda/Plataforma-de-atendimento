@@ -11,6 +11,16 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import TelegramProvider, { TelegramIncomingMessage } from '../../integrations/telegram-provider';
 import { normalizeAndSaveGenericMessage } from '../../services/normalization-service';
 import { processIncomingMessage } from '../../services/message-processing-service';
+import { SupportAgent } from '../../agents/support-agent';
+import { FinanceAgent } from '../../agents/finance-agent';
+import { SalesAgent } from '../../agents/sales-agent';
+import { getSupabaseClient } from '../../config/supabase';
+
+// Instâncias dos especialistas
+const supportAgent = new SupportAgent();
+const financeAgent = new FinanceAgent();
+const salesAgent = new SalesAgent();
+const supabase = getSupabaseClient();
 
 // Singleton do provider
 let telegramProvider: TelegramProvider | null = null;
@@ -21,17 +31,14 @@ let telegramProvider: TelegramProvider | null = null;
 export function initTelegramProvider(botToken: string): TelegramProvider {
   if (!telegramProvider) {
     telegramProvider = new TelegramProvider(botToken, { polling: true });
-    
-    const provider = telegramProvider; // Alias para usar dentro do callback
+    const provider = telegramProvider;
 
-    // Registrar handler de mensagens
     telegramProvider.onMessage(async (msg) => {
       console.log('📨 Telegram mensagem recebida:', {
         userId: msg.userId,
         text: msg.text.substring(0, 50) + (msg.text.length > 50 ? '...' : '')
       });
 
-      // 1. Normalizar e persistir mensagem
       const result = await normalizeAndSaveGenericMessage(
         {
           externalId: `${msg.userId}-${msg.timestamp.getTime()}`,
@@ -45,50 +52,81 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
         'telegram'
       );
 
-      if (!result.success || !result.message) {
-        console.error('❌ Erro ao persistir mensagem Telegram:', result.error);
-        return;
-      }
+      if (!result.success || !result.message) return;
 
-      console.log('✅ Telegram mensagem persistida:', result.message.id);
-
-      // 2. Processar com IA (RouterAgent) e responder
       try {
-        const processed = await processIncomingMessage({
-          id: result.message.id,
-          externalId: result.message.externalId,
-          channel: 'telegram',
-          customerId: result.message.customerId,
-          ticketId: result.message.ticketId || '', // Será criado se vazio
-          body: result.message.body,
-          timestamp: new Date(result.message.timestamp)
-        });
-
-        // 3. Enviar resposta da IA de volta para o Telegram
-        if (processed.needsClarification && processed.clarificationMessage) {
-          await provider.sendMessage({
-            to: msg.userId,
-            text: processed.clarificationMessage
-          });
-        } else if (processed.handoff) {
-          // Em um handoff bem-sucedido, o bot dá a primeira resposta de recepção
-          const welcomeMsg = `Olá! Identifiquei que você precisa de *${processed.sector}*. Já estou te encaminhando para um especialista. Só um instante! 🚀`;
-          await provider.sendMessage({
-            to: msg.userId,
-            text: welcomeMsg,
-            parseMode: 'Markdown'
-          });
+        // Verificar se o ticket já está associado a um especialista
+        let currentAgent = null;
+        let ticketStatus = 'novo';
+        if (result.message.ticketId) {
+          const { data: t } = await supabase.from('tickets').select('current_agent, status').eq('id', result.message.ticketId).single();
+          if (t) {
+            currentAgent = t.current_agent;
+            ticketStatus = t.status;
+          }
         }
-      } catch (procError) {
-        console.error('❌ Erro no processamento de IA:', procError);
+
+        // Se está aguardando humano ou finalizado, não bot responde
+        if (ticketStatus === 'aguardando_humano' || ticketStatus === 'em_atendimento') return;
+
+        // Se não tem agente atual, passa pelo Router
+        if (!currentAgent || currentAgent === 'router') {
+          const processed = await processIncomingMessage({
+            id: result.message.id,
+            externalId: result.message.externalId,
+            channel: 'telegram',
+            customerId: result.message.customerId,
+            ticketId: result.message.ticketId || '',
+            body: result.message.body,
+            timestamp: new Date(result.message.timestamp)
+          });
+
+          if (processed.needsClarification) {
+            await provider.sendMessage({ to: msg.userId, text: processed.clarificationMessage! });
+            return;
+          } else if (processed.handoff) {
+            currentAgent = processed.handoff.to;
+            await provider.sendMessage({
+              to: msg.userId,
+              text: `*Artificiall:* Entendido. Direcionando você para o departamento ${processed.sector.toUpperCase()}...`,
+              parseMode: 'Markdown'
+            });
+          }
+        }
+
+        // Repassar a mensagem para o especialista assumir
+        let agentResponse = null;
+        const contextBase = {
+          ticketId: result.message.ticketId || '',
+          customerId: result.message.customerId,
+          intent: 'atendimento',
+          conversationHistory: [],
+          customerProfile: { id: result.message.customerId, isActive: true }
+        };
+
+        if (currentAgent === 'support') {
+          agentResponse = await supportAgent.processMessage({ ...contextBase, sector: 'suporte' } as any, result.message.body);
+        } else if (currentAgent === 'finance') {
+          agentResponse = await financeAgent.processMessage({ ...contextBase, sector: 'financeiro' } as any, result.message.body);
+        } else if (currentAgent === 'sales') {
+          agentResponse = await salesAgent.processMessage({ ...contextBase, sector: 'comercial' } as any, result.message.body);
+        }
+
+        // Responder o cliente com a decisão do especialista
+        if (agentResponse && agentResponse.response) {
+          await provider.sendMessage({ to: msg.userId, text: agentResponse.response });
+          
+          if (agentResponse.needsHumanHandoff) {
+             await supabase.from('tickets').update({ status: 'aguardando_humano' }).eq('id', result.message.ticketId);
+          }
+        }
+
+      } catch (error) {
+        console.error('❌ Erro no fluxo de IA:', error);
       }
     });
 
-    // Registrar handler de erros
-    telegramProvider.onError((error) => {
-      console.error('❌ Erro no Telegram Bot:', error);
-    });
-
+    telegramProvider.onError((error) => console.error('❌ Erro no Telegram:', error));
     console.log('✅ Telegram Provider inicializado');
   }
 
