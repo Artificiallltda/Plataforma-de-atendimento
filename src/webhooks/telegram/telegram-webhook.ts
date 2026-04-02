@@ -55,79 +55,33 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
       if (!result.success || !result.message) return;
 
       try {
-        // Verificar se o ticket já está associado a um especialista
-        let currentAgent = null;
-        let ticketStatus = 'novo';
+        // 1. Verificar status do ticket (Humano assume = Bot cala)
         if (result.message.ticketId) {
-          const { data: t } = await supabase.from('tickets').select('current_agent, status').eq('id', result.message.ticketId).single();
-          if (t) {
-            currentAgent = t.current_agent;
-            ticketStatus = t.status;
-          }
+          const { data: t } = await supabase.from('tickets').select('status').eq('id', result.message.ticketId).single();
+          if (t && (t.status === 'aguardando_humano' || t.status === 'em_atendimento')) return;
         }
 
-        // Se está aguardando humano ou finalizado, não bot responde
-        if (ticketStatus === 'aguardando_humano' || ticketStatus === 'em_atendimento') return;
-
-        // Se não tem agente atual, passa pelo Router
-        if (!currentAgent || currentAgent === 'router') {
-          const processed = await processIncomingMessage({
-            id: result.message.id,
-            externalId: result.message.externalId,
-            channel: 'telegram',
-            customerId: result.message.customerId,
-            ticketId: result.message.ticketId || '',
-            body: result.message.body,
-            timestamp: new Date(result.message.timestamp)
-          });
-
-          if (processed.needsClarification) {
-            await provider.sendMessage({ to: msg.userId, text: processed.clarificationMessage! });
-            return;
-          } else if (processed.handoff) {
-            currentAgent = processed.handoff.to;
-            await provider.sendMessage({
-              to: msg.userId,
-              text: `*Artificiall:* Entendido. Direcionando você para o departamento ${processed.sector.toUpperCase()}...`,
-              parseMode: 'Markdown'
-            });
-          }
-        }
-
-        // Repassar a mensagem para o especialista assumir
-        let agentResponse = null;
-        const contextBase = {
-          ticketId: result.message.ticketId || '',
+        // 2. Processamento CENTRALIZADO via Message Processing Service
+        const processed = await processIncomingMessage({
+          id: result.message.id,
+          externalId: result.message.externalId,
+          channel: 'telegram',
           customerId: result.message.customerId,
-          intent: 'atendimento',
-          conversationHistory: [{
-            id: result.message.id,
-            sender: 'customer',
-            body: result.message.body,
-            timestamp: new Date()
-          }],
-          customerProfile: { id: result.message.customerId, isActive: true }
-        };
+          ticketId: result.message.ticketId || '',
+          body: result.message.body,
+          timestamp: new Date(result.message.timestamp)
+        });
 
-        if (currentAgent === 'support') {
-          agentResponse = await supportAgent.processMessage({ ...contextBase, sector: 'suporte' } as any);
-        } else if (currentAgent === 'finance') {
-          agentResponse = await financeAgent.processMessage({ ...contextBase, sector: 'financeiro' } as any);
-        } else if (currentAgent === 'sales') {
-          agentResponse = await salesAgent.processMessage({ ...contextBase, sector: 'comercial' } as any);
-        }
-
-        // Responder o cliente com a decisão do especialista
-        if (agentResponse && agentResponse.response) {
-          await provider.sendMessage({ to: msg.userId, text: agentResponse.response });
-          
-          if (agentResponse.needsHumanHandoff) {
-             await supabase.from('tickets').update({ status: 'aguardando_humano' }).eq('id', result.message.ticketId);
-          }
+        // 3. Responder ao cliente com a inteligência unificada
+        if (processed.clarificationMessage) {
+          await provider.sendMessage({ 
+            to: msg.userId, 
+            text: processed.clarificationMessage 
+          });
         }
 
       } catch (error) {
-        console.error('❌ Erro no fluxo de IA:', error);
+        console.error('❌ Erro no fluxo de IA do Telegram:', error);
       }
     });
 
