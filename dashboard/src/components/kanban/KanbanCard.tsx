@@ -41,18 +41,18 @@ const channelIcons = {
 }
 
 export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
-  const priority = priorityConfig[ticket.priority]
-  const ChannelIcon = channelIcons[ticket.channel].icon
-  const channelColor = channelIcons[ticket.channel].color
+  const priority = priorityConfig[ticket.priority] || priorityConfig.media
+  const ChannelIcon = channelIcons[ticket.channel]?.icon || MessageCircle
+  const channelColor = channelIcons[ticket.channel]?.color || 'text-slate-500'
   const PriorityIcon = priority.icon
 
-  // Mock de sentimento para demonstração (depois pegaremos do DB se disponível)
-  const sentiment = Math.random() > 0.5 ? 'positivo' : Math.random() > 0.3 ? 'neutro' : 'negativo'
+  // Mock de sentimento para demonstração profissional
+  const sentiment = ticket.router_confidence && ticket.router_confidence > 0.8 ? 'positivo' : ticket.router_confidence && ticket.router_confidence < 0.4 ? 'negativo' : 'neutro'
   
   const sentimentConfig = {
-    positivo: { icon: TrendingUp, color: 'text-emerald-500' },
-    neutro: { icon: Minus, color: 'text-slate-400' },
-    negativo: { icon: TrendingDown, color: 'text-rose-500' }
+    positivo: { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    neutro: { icon: Minus, color: 'text-slate-400', bg: 'bg-slate-50' },
+    negativo: { icon: TrendingDown, color: 'text-rose-500', bg: 'bg-rose-50' }
   }
   
   const SentimentIcon = sentimentConfig[sentiment].icon
@@ -60,78 +60,94 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
   return (
     <motion.div
       layoutId={ticket.id}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.3 } }}
+      whileTap={{ scale: 0.98 }}
       onClick={() => onClick?.(ticket)}
       className={cn(
-        "glass-card p-4 cursor-grab active:cursor-grabbing select-none group border-l-4",
-        priority.color,
-        isDragging && "shadow-2xl ring-2 ring-blue-400 opacity-90 scale-105 z-50",
-        !isDragging && "mb-3"
+        "relative bg-white rounded-3xl p-5 cursor-pointer select-none group transition-all duration-300",
+        "border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50",
+        isDragging && "shadow-2xl ring-2 ring-slate-900 border-transparent opacity-95 scale-105 z-50",
+        !isDragging && "mb-0"
       )}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center gap-2">
-          <div className={cn("p-1.5 rounded-lg bg-white shadow-sm border border-slate-100", channelColor)}>
-            <ChannelIcon size={14} />
-          </div>
-          <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-            #{ticket.id.slice(0, 6)}
-          </span>
-        </div>
-        <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight", priority.bg, priority.text)}>
-          <PriorityIcon size={10} />
-          {ticket.priority}
-        </div>
-      </div>
+      {/* Priority Indicator - Barra Lateral Premium */}
+      <div className={cn("absolute left-0 top-6 bottom-6 w-1.5 rounded-r-full transition-all duration-300 group-hover:w-2", priority.bg.replace('bg-', 'bg-').replace('-50', '-500'))} />
 
-      <h4 className="font-bold text-slate-800 text-sm mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
-        {ticket.customer?.name || 'Cliente'}
-      </h4>
-      <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">
-        {ticket.intent || 'Solicitação inicial iniciada...'}
-      </p>
-
-      {/* AI Insights & Sentiment */}
-      <div className="flex items-center justify-between py-2 border-t border-slate-100 mt-2">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1" title="Sentimento do Cliente">
-            <SentimentIcon size={14} className={sentimentConfig[sentiment].color} />
+      <div className="pl-3">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className={cn("p-2 rounded-xl bg-slate-50 border border-slate-100 shadow-sm", channelColor)}>
+              <ChannelIcon size={16} strokeWidth={2.5} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase block">
+                TICKET #{ticket.id.slice(0, 8).toUpperCase()}
+              </span>
+            </div>
           </div>
-          {ticket.current_agent && (
-            <div className="flex items-center gap-1 text-slate-400" title={`Agente IA: ${ticket.current_agent}`}>
-              <Bot size={14} className="text-blue-500" />
-            </div>
-          )}
+          
+          <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", priority.bg, priority.text, priority.color.replace('border-', 'border-').replace('-500', '-200'))}>
+            <PriorityIcon size={12} strokeWidth={3} />
+            {ticket.priority}
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-          <Clock size={10} />
-          {calculateWaitTime(ticket.created_at)}
-        </div>
-      </div>
-      
-      {/* Footer Info */}
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex -space-x-2">
-          {ticket.assigned_to ? (
-            <div className="h-6 w-6 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-blue-600" title="Atendente Humano">
-              <User size={12} />
+
+        <h4 className="font-extrabold text-slate-900 text-base mb-1 tracking-tight group-hover:text-blue-600 transition-colors">
+          {ticket.customer?.name || 'Cliente Indisponível'}
+        </h4>
+        
+        <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 leading-relaxed">
+          {ticket.intent || 'Solicitação em processamento pela IA...'}
+        </p>
+
+        {/* AI & Human Status */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100/80">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 group/sent" title="Análise de Sentimento">
+              <div className={cn("p-1 rounded-md", sentimentConfig[sentiment].bg)}>
+                <SentimentIcon size={14} className={sentimentConfig[sentiment].color} strokeWidth={2.5} />
+              </div>
             </div>
-          ) : (
-             <div className="h-6 w-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-slate-400" title="Aguardando Atendente">
-               <Bot size={12} />
-             </div>
-          )}
+            
+            {ticket.current_agent && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg border border-blue-100" title={`Agente: ${ticket.current_agent}`}>
+                <Bot size={14} className="text-blue-600" strokeWidth={2.5} />
+                <span className="text-[9px] font-black text-blue-700 uppercase">{ticket.current_agent.split('-')[0]}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-100/50 px-2.5 py-1 rounded-lg border border-slate-200/50">
+            <Clock size={12} strokeWidth={2.5} />
+            {calculateWaitTime(ticket.created_at)}
+          </div>
         </div>
         
-        <button className="text-slate-400 hover:text-blue-600 transition-colors">
-          <ArrowRight size={14} />
-        </button>
+        {/* Footer: Multi-agent interaction */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex -space-x-3">
+            <div className="h-8 w-8 rounded-full bg-slate-900 border-2 border-white flex items-center justify-center text-white shadow-sm z-10" title="Sistema AIOX">
+              <Bot size={16} strokeWidth={2.5} />
+            </div>
+            {ticket.assigned_to && (
+              <div className="h-8 w-8 rounded-full bg-indigo-500 border-2 border-white flex items-center justify-center text-white shadow-sm z-20" title="Atendente Responsável">
+                <User size={16} strokeWidth={2.5} />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-1 text-blue-600 font-black text-[10px] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+            Abrir Detalhes
+            <ArrowRight size={14} strokeWidth={3} />
+          </div>
+        </div>
       </div>
     </motion.div>
   )
 }
 
 function calculateWaitTime(createdAt: string): string {
+  if (!createdAt) return '--'
   const now = new Date()
   const created = new Date(createdAt)
   const diffMs = now.getTime() - created.getTime()
@@ -139,6 +155,5 @@ function calculateWaitTime(createdAt: string): string {
   
   if (diffMins < 60) return `${diffMins}m`
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h`
-  return `${Math.floor(diffHours / 24)}d`
+  return `${Math.floor(diffHours / 24)}D`
 }

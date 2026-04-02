@@ -48,35 +48,64 @@ Responda EXCLUSIVAMENTE com um único bloco JSON válido, sem nenhum texto antes
 export class RouterAgent {
   private model: GenerativeModel;
 
+  private modelFallback: any;
+
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
     const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-3.1-flash-preview NÃO EXISTE na API (Abril 2026). Usar gemini-2.5-flash (estável).
+    // Modelo primário: gemini-2.5-flash. Fallback: gemini-3.1-flash-lite-preview (mais leve)
     this.model = genAI.getGenerativeModel({ 
       model: process.env.GEMINI_MODEL_ROUTER || 'gemini-2.5-flash' 
     });
+    this.modelFallback = genAI.getGenerativeModel({ 
+      model: process.env.GEMINI_MODEL_ROUTER_FALLBACK || 'gemini-3.1-flash-lite-preview' 
+    });
+  }
+
+  private async tryGenerate(model: any, userPrompt: string): Promise<RouterOutput> {
+    const result = await model.generateContent([ROUTER_SYSTEM_PROMPT, userPrompt]);
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON nao encontrado na resposta.');
+    return JSON.parse(jsonMatch[0]);
   }
 
   async classify(message: string, context?: any): Promise<RouterOutput> {
+    const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const prompt = `<HORA_ATUAL>: ${now}\nContexto: ${JSON.stringify(context)}\nMensagem do Cliente: "${message}"`;
+
+    // Tentativa 1: Modelo primario (gemini-2.5-flash)
     try {
-      const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-      const prompt = `<HORA_ATUAL>: ${now}\nContexto: ${JSON.stringify(context)}\nMensagem do Cliente: "${message}"`;
-      const result = await this.model.generateContent([ROUTER_SYSTEM_PROMPT, prompt]);
-      const text = result.response.text();
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Falha no parse');
-      return JSON.parse(jsonMatch[0]);
+      return await this.tryGenerate(this.model, prompt);
+    } catch (err1) {
+      console.warn(`[Router] Modelo primario falhou: ${err1 instanceof Error ? err1.message.substring(0, 100) : err1}`);
+    }
+
+    // Tentativa 2: Modelo fallback apos 1.5s (gemini-3.1-flash-lite-preview)
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const result = await this.tryGenerate(this.modelFallback, prompt);
+      console.log('[Router] ✅ Fallback gemini-3.1-flash-lite-preview funcionou.');
+      return result;
+    } catch (err2) {
+      console.warn(`[Router] Fallback tambem falhou: ${err2 instanceof Error ? err2.message.substring(0, 100) : err2}`);
+    }
+
+    // Tentativa 3: Retry primario apos 4s (pico de demanda pode ter passado)
+    await new Promise(r => setTimeout(r, 4000));
+    try {
+      return await this.tryGenerate(this.model, prompt);
     } catch (error) {
-      console.error('❌ RouterAgent.classify() falhou:', error instanceof Error ? error.message : error);
+      console.error('[Router] ❌ Todas as tentativas esgotadas:', error instanceof Error ? error.message : error);
       return {
         sector: 'suporte',
         intent: 'erro_classificacao',
         confidence: 0.3,
         suggestedAgent: 'support',
         needsClarification: true,
-        humanResponse: "Desculpe pela demora! Estou processando sua mensagem. Pode me contar mais sobre o que precisa?",
-        reasoning: `Fallback de erro: ${error instanceof Error ? error.message : 'desconhecido'}`
+        humanResponse: "Estou com instabilidade no momento. Pode repetir sua mensagem? Já estou tentando reconectar.",
+        reasoning: `Erro apos 3 tentativas: ${error instanceof Error ? error.message : 'desconhecido'}`
       };
     }
   }
@@ -107,4 +136,7 @@ export class RouterAgent {
 
 export const routerAgent = new RouterAgent();
 export const getRouterAgent = () => routerAgent;
+
+
+
 

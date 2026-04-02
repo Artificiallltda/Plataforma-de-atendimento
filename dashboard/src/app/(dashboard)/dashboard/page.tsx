@@ -13,7 +13,13 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [sector, setSector] = useState<string>('Geral')
   const supabase = createClient()
-  const { tickets, loading: ticketsLoading } = useTickets({ sector: sector === 'supervisor' || sector === 'Geral' ? undefined : sector, enabled: true })
+  
+  // CORREÇÃO: Filtro case-insensitive e visibilidade global para supervisores
+  const isGlobalSector = ['supervisor', 'geral', 'ceo', 'admin'].includes(sector?.toLowerCase().trim())
+  const { tickets, loading: ticketsLoading } = useTickets({ 
+    sector: isGlobalSector ? undefined : sector, 
+    enabled: true 
+  })
 
   useEffect(() => {
     const loadData = async () => {
@@ -46,10 +52,21 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 text-blue-600 mx-auto" />
-          <p className="mt-4 text-slate-500 font-medium">Iniciando PAA Console...</p>
+      <div className="space-y-10 h-full animate-pulse">
+        {/* Skeleton Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-3">
+            <div className="h-10 w-72 bg-slate-200 rounded-2xl" />
+            <div className="h-4 w-56 bg-slate-100 rounded-xl" />
+          </div>
+          <div className="h-12 w-40 bg-slate-100 rounded-2xl" />
+        </div>
+        
+        {/* Skeleton Kanban Columns */}
+        <div className="flex gap-8 overflow-hidden pt-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="w-[350px] min-w-[350px] h-[700px] bg-slate-100/40 rounded-[32px] border border-slate-200/20" />
+          ))}
         </div>
       </div>
     )

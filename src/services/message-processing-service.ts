@@ -67,7 +67,7 @@ export async function processIncomingMessage(message: {
           finalTicketId = etAny.id;
           // Atualizar setor se a intenção mudou
           if (etAny.sector !== sector) {
-            await supabase.from('tickets').update({ sector: sector as any, intent: classification.intent } as any).eq('id', finalTicketId);
+            await (supabase.from('tickets') as any).update({ sector, intent: classification.intent }).eq('id', finalTicketId);
           }
         }
       } catch (_) { /* nenhum ticket aberto, criar novo abaixo */ }
@@ -128,7 +128,7 @@ export async function processIncomingMessage(message: {
     // 5. [CRÍTICO] PERSISTIR RESPOSTA DA IA NO BANCO DE DADOS
     // Sem isso, a IA terá amnésia na próxima mensagem e o Dashboard ficará mudo.
     if (agentResponse) {
-      const { error: saveError } = await supabase.from('messages').insert({
+      const { error: saveError } = await (supabase.from('messages') as any).insert({
         ticket_id: finalTicketId,
         customer_id: message.customerId,
         channel: message.channel,
@@ -157,6 +157,8 @@ export async function processIncomingMessage(message: {
     };
   }
 }
+
+
 
 
 

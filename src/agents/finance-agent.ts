@@ -301,11 +301,11 @@ export class FinanceAgent {
       // Buscar dados do cliente para obter asaasCustomerId
       const { data: customer } = await supabase
         .from('customers')
-        .select('asaasCustomerId')
+        .select('asaas_customer_id')
         .eq('id', customerId)
         .single();
 
-      if (!customer || !customer.asaasCustomerId) {
+      if (!customer || !(customer as any).asaas_customer_id) {
         return {
           invoices: [],
           error: 'Cliente não encontrado no Asaas'
@@ -313,7 +313,7 @@ export class FinanceAgent {
       }
 
       // Buscar faturas pendentes
-      const invoices = await asaasService.findPendingInvoices(customer.asaasCustomerId);
+      const invoices = await asaasService.findPendingInvoices((customer as any).asaas_customer_id);
 
       return {
         invoices: invoices.map(inv => ({
@@ -410,7 +410,7 @@ export class FinanceAgent {
         .eq('id', customerId)
         .single();
 
-      if (!customer || !customer.guruSubscriptionId) {
+      if (!customer || !(customer as any).guru_subscription_id) {
         return {
           isActive: false,
           error: 'Assinatura não encontrada no GURU'
@@ -418,7 +418,7 @@ export class FinanceAgent {
       }
 
       // Buscar assinatura no GURU
-      const subscription = await guruService.findSubscriptionById(customer.guruSubscriptionId);
+      const subscription = await guruService.findSubscriptionById((customer as any).guru_subscription_id);
 
       if (!subscription) {
         return {
@@ -480,7 +480,7 @@ export class FinanceAgent {
         .eq('id', customerId)
         .single();
 
-      if (!customer || !customer.guruSubscriptionId) {
+      if (!customer || !(customer as any).guru_subscription_id) {
         return {
           success: false,
           error: 'Assinatura não encontrada no GURU'
@@ -489,7 +489,7 @@ export class FinanceAgent {
 
       // Aplicar cupom no GURU
       const result = await guruService.applyRetentionCoupon(
-        customer.guruSubscriptionId,
+        (customer as any).guru_subscription_id,
         discountPercent,
         months
       );

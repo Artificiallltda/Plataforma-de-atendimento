@@ -145,7 +145,7 @@ export function Inbox({ ticket, senderId, onBack }: InboxProps) {
       {/* Input */}
       <MessageInput
         ticketId={ticket.id}
-        customerId={ticket.customerId}
+        customerId={(ticket as any).customer_id}
         channel={ticket.channel}
         senderId={senderId}
         onMessageSent={() => {}}

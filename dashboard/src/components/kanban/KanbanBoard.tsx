@@ -128,57 +128,70 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
       {/* Board Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-            <Columns size={20} />
+      <div className="flex items-center justify-between px-2 py-6 mb-2">
+        <div className="flex items-center gap-5">
+          <div className="h-14 w-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200 rotate-3 hover:rotate-0 transition-transform duration-500">
+            <Columns size={24} />
           </div>
-          <h3 className="font-bold text-slate-800 text-lg">Quadro de Atendimento</h3>
-          {sectorFilter && (
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full border border-slate-200 capitalize">
-              {sectorFilter}
-            </span>
-          )}
+          <div>
+            <h3 className="font-black text-slate-800 text-2xl tracking-tight">Fluxo de Atendimento</h3>
+            <div className="flex items-center gap-2 mt-1">
+              {sectorFilter && (
+                <span className="px-3 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg border border-blue-100 uppercase tracking-widest">
+                  Setor: {sectorFilter}
+                </span>
+              )}
+              <span className="px-3 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 uppercase tracking-widest flex items-center gap-1">
+                <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+                Tempo Real Ativo
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+        
+        <div className="flex items-center gap-4">
+          <div className="relative group hidden lg:block">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
             <input 
               type="text" 
-              placeholder="Buscar ticket..." 
-              className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-100 w-64 transition-all"
+              placeholder="Pesquisar por cliente ou ID..." 
+              className="pl-12 pr-6 py-3 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-slate-100 w-80 transition-all shadow-sm outline-none font-medium"
             />
           </div>
-          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors border border-slate-200">
-            <Filter size={18} />
+          <button className="p-3 bg-white hover:bg-slate-50 rounded-2xl text-slate-600 transition-all border border-slate-200 shadow-sm hover:shadow-md group">
+            <Filter size={20} className="group-hover:rotate-12 transition-transform" />
           </button>
         </div>
       </div>
 
       {/* Columns Container */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-x-auto p-6 scrollbar-hide">
-          <div className="flex gap-6 min-h-full">
-            {columns.map(col => (
-              <div key={col.id} className="flex flex-col w-80 min-w-[320px] bg-slate-100 bg-opacity-50 rounded-2xl h-full border border-slate-200 border-dashed">
+        <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide">
+          <div className="flex gap-8 min-h-full pb-4">
+            {columns.map((col, index) => (
+              <motion.div 
+                key={col.id} 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="flex flex-col w-[350px] min-w-[350px] bg-slate-200/20 backdrop-blur-md rounded-[32px] h-full border border-white/40 shadow-sm"
+              >
                 {/* Column Header */}
-                <div className="p-4 flex items-center justify-between sticky top-0 bg-transparent z-10">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("p-1.5 rounded-lg shadow-sm border border-slate-200 bg-white", col.color)}>
-                      <col.icon size={16} />
+                <div className="p-6 flex items-center justify-between sticky top-0 z-10 bg-transparent">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("p-2.5 rounded-xl shadow-lg border border-white bg-white", col.color)}>
+                      <col.icon size={20} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-700 text-sm">{col.title}</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        {boardData[col.id]?.length || 0} Tickets
+                      <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{col.title}</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">
+                        {boardData[col.id]?.length || 0} Atendimentos
                       </p>
                     </div>
                   </div>
-                  <button className="p-1 hover:bg-white rounded transition-colors text-slate-400">
-                    <MoreHorizontal size={16} />
-                  </button>
+                  <div className="h-2 w-2 rounded-full bg-slate-300" />
                 </div>
 
                 {/* Droppable Area */}
@@ -188,8 +201,8 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                       {...provided.droppableProps}
                       ref={provided.innerRef}
                       className={cn(
-                        "flex-1 p-3 transition-colors duration-200 space-y-3 min-h-[500px]",
-                        snapshot.isDraggingOver && "bg-blue-50/50 rounded-b-2xl"
+                        "flex-1 p-4 transition-all duration-300 space-y-4 min-h-[500px]",
+                        snapshot.isDraggingOver && "bg-white/30"
                       )}
                     >
                       {boardData[col.id]?.map((ticket, index) => (
@@ -199,6 +212,7 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
+                              className="transition-transform"
                             >
                               <KanbanCard 
                                 ticket={ticket} 
@@ -210,10 +224,17 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                         </Draggable>
                       ))}
                       {provided.placeholder}
+                      
+                      {/* Empty State visual */}
+                      {boardData[col.id]?.length === 0 && (
+                        <div className="h-32 rounded-3xl border-2 border-dashed border-slate-300/30 flex items-center justify-center">
+                           <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter opacity-50">Vazio</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </Droppable>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

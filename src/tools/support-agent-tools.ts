@@ -30,7 +30,7 @@ export async function checkUserStatus(customerId: string): Promise<{
     // Buscar dados do cliente no Supabase
     const { data: customer, error } = await supabase
       .from('customers')
-      .select('guruSubscriptionId, asaasCustomerId, name, email')
+      .select('guru_subscription_id, asaas_customer_id, name, email')
       .eq('id', customerId)
       .single();
 
@@ -45,14 +45,14 @@ export async function checkUserStatus(customerId: string): Promise<{
 
     // Buscar no GURU
     let guruData = null;
-    if (customer.guruSubscriptionId) {
-      guruData = await guruService.findSubscriptionById(customer.guruSubscriptionId);
+    if ((customer as any).guru_subscription_id) {
+      guruData = await guruService.findSubscriptionById((customer as any).guru_subscription_id);
     }
 
     // Buscar no Asaas
     let asaasData = null;
-    if (customer.asaasCustomerId) {
-      const invoices = await asaasService.findPendingInvoices(customer.asaasCustomerId);
+    if ((customer as any).asaas_customer_id) {
+      const invoices = await asaasService.findPendingInvoices((customer as any).asaas_customer_id);
       asaasData = {
         hasPendingInvoices: invoices.length > 0,
         pendingCount: invoices.length
@@ -112,11 +112,11 @@ export async function getKnowledgeBase(query: string): Promise<Array<{
     }
 
     // Retornar com score de relevância simples
-    return (articles || []).map(article => ({
+    return (articles || []).map((article: any) => ({
       id: article.id,
       title: article.title,
       content: article.content?.substring(0, 500) + (article.content?.length > 500 ? '...' : ''),
-      relevance: 0.5, // Score fixo para busca textual
+      relevance: 0.5,
       url: article.url
     }));
   } catch (error) {
@@ -147,18 +147,18 @@ export async function createTechnicalTicket(details: {
   error?: string;
 }> {
   try {
-    const { data, error } = await supabase
-      .from('technical_tickets')
+    const { data, error } = await (supabase
+      .from('technical_tickets') as any)
       .insert({
-        customerId: details.customerId,
-        ticketId: details.ticketId,
+        customer_id: details.customerId,
+        ticket_id: details.ticketId,
         error: details.error,
-        stepsToReproduce: details.stepsToReproduce ? JSON.stringify(details.stepsToReproduce) : null,
-        expectedBehavior: details.expectedBehavior,
-        actualBehavior: details.actualBehavior,
+        steps_to_reproduce: details.stepsToReproduce ? JSON.stringify(details.stepsToReproduce) : null,
+        expected_behavior: details.expectedBehavior,
+        actual_behavior: details.actualBehavior,
         severity: details.severity,
         status: 'aberto',
-        reportedAt: new Date().toISOString()
+        reported_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -247,3 +247,4 @@ export default {
   createTechnicalTicket,
   requestEvidence
 };
+

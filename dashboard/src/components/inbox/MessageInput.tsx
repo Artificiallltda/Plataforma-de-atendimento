@@ -36,7 +36,7 @@ export function MessageInput({
     setSending(true)
     setError(null)
 
-    const result = await sendMessage(ticketId, customerId, channel, message.trim(), 'human', senderId)
+    const result = await sendMessage(ticketId, customerId, channel, message.trim(), senderId)
 
     if (result.success) {
       setMessage('')

@@ -71,17 +71,22 @@ export function ModernLayout({ children }: ModernLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-[#f8fafc] flex relative overflow-hidden">
+      {/* Background Mesh Gradients - Efeito Premium */}
+      <div className="absolute top-0 -left-4 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl opacity-60 animate-pulse pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl opacity-80 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-slate-100/30 rounded-full blur-3xl pointer-events-none" />
+
       {/* Sidebar */}
       <aside 
         className={cn(
-          "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col z-50",
-          isSidebarOpen ? "w-64" : "w-20"
+          "bg-white/80 backdrop-blur-xl border-r border-slate-200/50 transition-all duration-500 ease-in-out flex flex-col z-50 relative",
+          isSidebarOpen ? "w-64" : "w-24"
         )}
       >
         {/* Logo Area */}
-        <div className="h-24 flex items-center px-6 border-b border-slate-100 overflow-hidden justify-center">
-          <div className="relative h-16 w-full flex-shrink-0">
+        <div className="h-24 flex items-center px-6 border-b border-slate-100/50 overflow-hidden justify-center bg-white/50 backdrop-blur-sm">
+          <div className="relative h-14 w-full flex-shrink-0 transition-transform duration-300 transform hover:scale-105">
             <Image 
               src="/brand/logo.png" 
               alt="Artificiall" 
@@ -92,70 +97,80 @@ export function ModernLayout({ children }: ModernLayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-2">
+        <nav className="flex-1 py-8 px-4 space-y-3">
           {menuItems.map((item) => (
             <Link 
               key={item.path} 
               href={item.path}
               className={cn(
-                "group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+                "group flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300",
                 pathname === item.path 
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                  : "text-slate-500 hover:bg-blue-50 hover:text-blue-600"
+                  ? "bg-slate-900 text-white shadow-lg shadow-slate-200 ring-1 ring-slate-800" 
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               )}
             >
-              <item.icon size={22} className={cn(pathname === item.path ? "text-white" : "group-hover:scale-110 transition-transform")} />
+              <item.icon size={22} className={cn(pathname === item.path ? "text-white" : "group-hover:scale-110 transition-transform duration-300")} />
               {isSidebarOpen && (
-                <span className="font-medium">{item.name}</span>
+                <span className="font-semibold tracking-tight">{item.name}</span>
               )}
             </Link>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100/50 mb-4">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300 group"
           >
-            <LogOut size={22} />
-            {isSidebarOpen && <span className="font-medium">Sair</span>}
+            <LogOut size={22} className="group-hover:-translate-x-1 transition-transform" />
+            {isSidebarOpen && <span className="font-semibold tracking-tight">Sair da Console</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-40">
-          <div className="flex items-center gap-4">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10">
+        <header className="h-20 bg-white/60 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-10 sticky top-0 z-40 shadow-sm shadow-slate-100/50">
+          <div className="flex items-center gap-6">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
+              className="p-2.5 hover:bg-slate-200/50 rounded-xl text-slate-600 transition-colors border border-slate-200/50 shadow-sm"
             >
-              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <div className="h-6 w-[1px] bg-slate-200 mx-2" />
-            <h2 className="text-xl font-bold text-slate-800">
-              {menuItems.find(i => i.path === pathname)?.name || 'Atendimento'}
+            <div className="h-8 w-[1px] bg-slate-200/60" />
+            <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+              {menuItems.find(i => i.path === pathname)?.name || 'Central de Atendimento'}
             </h2>
           </div>
 
-          <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
+          <div className="flex items-center gap-4 pl-6 border-l border-slate-200/60">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-900 leading-none mb-1">
+              <p className="text-sm font-bold text-slate-900 leading-none mb-1">
                 {user?.email?.split('@')[0]}
               </p>
-              <p className="text-xs font-medium text-blue-600 capitalize">
+              <p className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
                 {role}
               </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 border border-slate-300">
-              <UserCircle size={24} />
+            <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-slate-100 to-white shadow-inner flex items-center justify-center text-slate-600 border border-slate-200/50 hover:shadow-md transition-shadow group cursor-pointer">
+              <UserCircle size={24} className="group-hover:scale-110 transition-transform" />
             </div>
           </div>
         </header>
 
-        <div className="flex-1 p-8 overflow-auto">
-          {children}
+        <div className="flex-1 p-10 overflow-auto scrollbar-hide">
+          <AnimatePresence mode="wait">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              key={pathname}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

@@ -282,14 +282,14 @@ export class SupportAgent {
 
       // Buscar no GURU
       let guruData = null;
-      if (customer.guruSubscriptionId) {
-        guruData = await guruService.findSubscriptionById(customer.guruSubscriptionId);
+      if ((customer as any).guru_subscription_id) {
+        guruData = await guruService.findSubscriptionById((customer as any).guru_subscription_id);
       }
 
       // Buscar no Asaas
       let asaasData = null;
-      if (customer.asaasCustomerId) {
-        const invoices = await asaasService.findPendingInvoices(customer.asaasCustomerId);
+      if ((customer as any).asaas_customer_id) {
+        const invoices = await asaasService.findPendingInvoices((customer as any).asaas_customer_id);
         asaasData = { hasPendingInvoices: invoices.length > 0 };
       }
 

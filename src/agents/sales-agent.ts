@@ -455,11 +455,11 @@ Qual plano faz mais sentido para você?
       // Buscar customerId no GURU
       const { data: customer } = await supabase
         .from('customers')
-        .select('guruSubscriptionId')
+        .select('guru_subscription_id')
         .eq('id', customerId)
         .single();
 
-      const guruCustomerId = customer?.guruSubscriptionId;
+      const guruCustomerId = (customer as any)?.guru_subscription_id;
 
       if (!guruCustomerId) {
         return {
@@ -503,13 +503,13 @@ Qual plano faz mais sentido para você?
   }> {
     try {
       // Registrar demo no Supabase
-      const { data, error } = await supabase
-        .from('demos')
+      const { data, error } = await (supabase
+        .from('demos') as any)
         .insert({
-          leadId,
-          scheduledAt: datetime,
+          lead_id: leadId,
+          scheduled_at: datetime,
           status: 'scheduled',
-          createdAt: new Date().toISOString()
+          created_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -523,7 +523,7 @@ Qual plano faz mais sentido para você?
 
       return {
         success: true,
-        demoId: data.id
+        demoId: (data as any).id
       };
     } catch (error) {
       console.error('❌ Erro em scheduleDemo:', error);
@@ -565,3 +565,4 @@ export function getSalesAgent(): SalesAgent {
 export const salesAgent = getSalesAgent();
 
 export default salesAgent;
+

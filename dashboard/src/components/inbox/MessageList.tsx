@@ -75,9 +75,9 @@ export function MessageList({ messages, loading }: MessageListProps) {
                 </div>
 
                 {/* Media */}
-                {message.mediaUrl && (
+                {message.media_url && (
                   <div className="mt-1 text-xs text-gray-500">
-                    📎 {message.mediaType || 'Mídia'}
+                    📎 {message.media_type || 'Mídia'}
                   </div>
                 )}
               </div>
