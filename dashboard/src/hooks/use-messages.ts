@@ -44,8 +44,6 @@ export function useMessages(options: UseMessagesOptions) {
         if (!customer_id) return
         setLoading(true)
         
-        // BUSCA POR CUSTOMER_ID: Garante que o histórico do robô (em outros tickets) 
-        // apareça no chat atual do humano.
         const { data, error } = await supabase
           .from('messages')
           .select('*, agent:agents(name, sector)')
@@ -53,7 +51,15 @@ export function useMessages(options: UseMessagesOptions) {
           .order('timestamp', { ascending: true })
 
         if (error) throw error
-        setMessages(data || [])
+
+        // MAPEAMENTO DE FALLBACK: Garante que o frontend entenda o camelCase ou snake_case
+        const mappedMessages = (data || []).map(m => ({
+          ...m,
+          customer_id: m.customer_id || (m as any).customerId,
+          ticket_id: m.ticket_id || (m as any).ticketId
+        }))
+
+        setMessages(mappedMessages as Message[])
         setError(null)
       } catch (err: any) {
         console.error('Erro ao carregar mensagens:', err)
@@ -68,7 +74,6 @@ export function useMessages(options: UseMessagesOptions) {
 
     // Assinar atualizações em tempo real baseadas no customer_id
     if (enabled && customer_id) {
-      // Registrar evento no console para debug de Realtime
       console.log(`🔌 Conectando Realtime para Cliente: ${customer_id}`);
 
       channel = supabase
@@ -83,10 +88,18 @@ export function useMessages(options: UseMessagesOptions) {
           },
           (payload) => {
             console.log('🔔 Nova mensagem via Realtime!', payload.new);
+            
+            // NORMALIZAÇÃO DA MENSAGEM RECEBIDA VIA REALTIME
+            const newMessage = payload.new as any;
+            const normalizedMsg: Message = {
+              ...newMessage,
+              customer_id: newMessage.customer_id || newMessage.customerId,
+              ticket_id: newMessage.ticket_id || newMessage.ticketId
+            };
+
             setMessages(prev => {
-              // Evitar duplicidade
-              if (prev.some(m => m.id === payload.new.id)) return prev;
-              return [...prev, payload.new as Message];
+              if (prev.some(m => m.id === normalizedMsg.id)) return prev;
+              return [...prev, normalizedMsg];
             });
           }
         )

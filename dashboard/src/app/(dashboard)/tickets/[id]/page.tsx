@@ -15,10 +15,12 @@ export default function TicketDetailPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    let channel: any = null;
+
     const loadData = async () => {
       const ticketId = params.id as string
 
-      // Buscar dados do ticket
+      // BUSCAR TICKET COM FALLBACK DE IDS (customer_id vs customerId)
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select(`
@@ -37,18 +39,44 @@ export default function TicketDetailPage() {
         return
       }
 
-      setTicket(ticketData)
-
-      // Buscar usuário atual
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserId(user.id)
+      // NORMALIZAÇÃO DE ID PARA O FRONTEND
+      const normalizedTicket = {
+        ...ticketData,
+        customer_id: ticketData.customer_id || (ticketData as any).customerId
       }
 
+      setTicket(normalizedTicket)
+
+      // BUSCAR USUÁRIO ATUAL
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) setUserId(user.id)
+
       setLoading(false)
+
+      // ATIVAR REALTIME NA PÁGINA DE DETALHE
+      channel = supabase
+        .channel(`ticket-detail-${ticketId}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'tickets',
+          filter: `id=eq.${ticketId}`
+        }, (payload) => {
+          console.log('🔄 Ticket atualizado via Realtime!', payload.new);
+          setTicket(prev => ({ 
+            ...prev, 
+            ...payload.new,
+            customer_id: payload.new.customer_id || (payload.new as any).customerId 
+          }) as any);
+        })
+        .subscribe()
     }
 
     loadData()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [params.id, router, supabase])
 
   if (loading) {
