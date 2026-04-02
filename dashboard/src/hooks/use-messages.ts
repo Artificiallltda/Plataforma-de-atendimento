@@ -41,14 +41,14 @@ export function useMessages(options: UseMessagesOptions) {
 
     const loadMessages = async () => {
       try {
-        console.log(`🔍 [useMessages] Iniciando carga para Cliente: ${customer_id}`);
-        
-        if (!customer_id) {
-          console.warn('⚠️ [useMessages] customer_id vazio.');
+        // Trava de segurança: ignorar IDs inválidos ou texto 'null'
+        if (!customer_id || customer_id === 'null' || customer_id === 'undefined') {
+          console.log('⏭️ [useMessages] ID inválido ou nulo. Pulando carga.');
           setLoading(false);
           return;
         }
 
+        console.log(`🔍 [useMessages] Carregando histórico para: ${customer_id}`);
         setLoading(true)
         
         // Query simplificada ao máximo para matar o Erro 400

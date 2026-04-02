@@ -19,42 +19,9 @@ const senderConfig = {
 }
 
 export function MessageList({ messages, loading }: MessageListProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isFirstLoad, setIsFirstLoad] = useState(true)
-
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior, block: 'end' })
-    }
-  }
-
-  useEffect(() => {
-    if (loading) return
-
-    const container = containerRef.current
-    if (!container) return
-
-    // Se for a primeira carga, desce direto (sem animação para ser instantâneo)
-    if (isFirstLoad && messages.length > 0) {
-      setTimeout(() => {
-        scrollToBottom('auto')
-        setIsFirstLoad(false)
-      }, 100)
-      return
-    }
-
-    // Só desce automaticamente se o usuário já estiver próximo ao fundo (ex: lendo as últimas mensagens)
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150
-    
-    if (isAtBottom) {
-      scrollToBottom('smooth')
-    }
-  }, [messages, loading])
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex-1 flex items-center justify-center bg-slate-50/50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     )
@@ -62,16 +29,15 @@ export function MessageList({ messages, loading }: MessageListProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        <p>Nenhuma mensagem ainda</p>
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/50 text-slate-400">
+        <p className="text-sm">Nenhuma mensagem ainda.</p>
       </div>
     )
   }
 
   return (
     <div 
-      ref={containerRef}
-      className="flex-1 overflow-y-auto p-4 bg-slate-50/50"
+      className="flex-1 overflow-y-auto p-4 bg-slate-50/50 custom-scrollbar"
     >
       <div className="flex flex-col space-y-4 min-h-full">
         {messages.map((message, index) => {
@@ -130,8 +96,6 @@ export function MessageList({ messages, loading }: MessageListProps) {
             </div>
           )
         })}
-        {/* Elemento de Ancoragem para o Scroll */}
-        <div ref={scrollRef} className="h-2 w-full flex-shrink-0" />
       </div>
     </div>
   )
