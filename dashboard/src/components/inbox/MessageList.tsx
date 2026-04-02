@@ -37,7 +37,8 @@ export function MessageList({ messages, loading }: MessageListProps) {
 
   return (
     <div 
-      className="flex-1 overflow-y-auto p-4 bg-slate-50/50 custom-scrollbar"
+      className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-slate-50/50 h-full max-h-full"
+      style={{ scrollbarWidth: 'auto', scrollBehavior: 'auto' }}
     >
       <div className="flex flex-col space-y-4 min-h-full">
         {messages.map((message, index) => {
