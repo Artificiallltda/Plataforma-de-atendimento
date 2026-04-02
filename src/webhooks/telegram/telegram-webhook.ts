@@ -100,16 +100,21 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
           ticketId: result.message.ticketId || '',
           customerId: result.message.customerId,
           intent: 'atendimento',
-          conversationHistory: [],
+          conversationHistory: [{
+            id: result.message.id,
+            sender: 'customer',
+            body: result.message.body,
+            timestamp: new Date()
+          }],
           customerProfile: { id: result.message.customerId, isActive: true }
         };
 
         if (currentAgent === 'support') {
-          agentResponse = await supportAgent.processMessage({ ...contextBase, sector: 'suporte' } as any, result.message.body);
+          agentResponse = await supportAgent.processMessage({ ...contextBase, sector: 'suporte' } as any);
         } else if (currentAgent === 'finance') {
-          agentResponse = await financeAgent.processMessage({ ...contextBase, sector: 'financeiro' } as any, result.message.body);
+          agentResponse = await financeAgent.processMessage({ ...contextBase, sector: 'financeiro' } as any);
         } else if (currentAgent === 'sales') {
-          agentResponse = await salesAgent.processMessage({ ...contextBase, sector: 'comercial' } as any, result.message.body);
+          agentResponse = await salesAgent.processMessage({ ...contextBase, sector: 'comercial' } as any);
         }
 
         // Responder o cliente com a decisão do especialista
