@@ -36,8 +36,23 @@ export function MessageInput({
     const fetchAgent = async () => {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      const { data } = await supabase.from('agents').select('name').eq('id', senderId).single()
-      if (data) setAgentName(data.name)
+      
+      // 1. Tentar buscar da tabela de agentes
+      const { data: agentData } = await supabase.from('agents').select('name').eq('id', senderId).single()
+      if (agentData?.name) {
+        setAgentName(agentData.name)
+        return
+      }
+
+      // 2. Tentar buscar do Perfil Logado (Auth)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.user_metadata?.full_name) {
+        setAgentName(user.user_metadata.full_name)
+      } else if (user?.email) {
+        // Fallback: prefixo do email (ex: gean@artificiall.ai -> Gean)
+        const nameFromEmail = user.email.split('@')[0]
+        setAgentName(nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1))
+      }
     }
     if (senderId) fetchAgent()
   }, [senderId])

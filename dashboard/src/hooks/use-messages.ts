@@ -41,7 +41,14 @@ export function useMessages(options: UseMessagesOptions) {
 
     const loadMessages = async () => {
       try {
-        if (!customer_id) return
+        console.log(`🔍 [useMessages] Iniciando carga para Ticket: ${ticketId}, Cliente: ${customer_id}`);
+        
+        if (!customer_id) {
+          console.warn('⚠️ [useMessages] customer_id está VAZIO. A carga de mensagens foi abortada.');
+          setLoading(false);
+          return;
+        }
+
         setLoading(true)
         
         const { data, error } = await supabase
@@ -52,7 +59,8 @@ export function useMessages(options: UseMessagesOptions) {
 
         if (error) throw error
 
-        // MAPEAMENTO DE FALLBACK: Garante que o frontend entenda o camelCase ou snake_case
+        console.log(`✅ [useMessages] ${data?.length || 0} mensagens carregadas.`);
+
         const mappedMessages = (data || []).map(m => ({
           ...m,
           customer_id: m.customer_id || (m as any).customerId,
@@ -62,19 +70,17 @@ export function useMessages(options: UseMessagesOptions) {
         setMessages(mappedMessages as Message[])
         setError(null)
       } catch (err: any) {
-        console.error('Erro ao carregar mensagens:', err)
+        console.error('❌ [useMessages] Erro ao carregar mensagens:', err)
         setError(err.message)
       } finally {
         setLoading(false)
       }
     }
 
-    // Carregar mensagens iniciais
     loadMessages()
 
-    // Assinar atualizações em tempo real baseadas no customer_id
     if (enabled && customer_id) {
-      console.log(`🔌 Conectando Realtime para Cliente: ${customer_id}`);
+      console.log(`🔌 [Realtime] Conectando canal: chat-${customer_id}`);
 
       channel = supabase
         .channel(`chat-${customer_id}`)
@@ -87,9 +93,8 @@ export function useMessages(options: UseMessagesOptions) {
             filter: `customer_id=eq.${customer_id}`
           },
           (payload) => {
-            console.log('🔔 Nova mensagem via Realtime!', payload.new);
+            console.log('🔔 [Realtime] Nova mensagem detectada!', payload.new);
             
-            // NORMALIZAÇÃO DA MENSAGEM RECEBIDA VIA REALTIME
             const newMessage = payload.new as any;
             const normalizedMsg: Message = {
               ...newMessage,
@@ -99,12 +104,14 @@ export function useMessages(options: UseMessagesOptions) {
 
             setMessages(prev => {
               if (prev.some(m => m.id === normalizedMsg.id)) return prev;
-              return [...prev, normalizedMsg];
+              const newList = [...prev, normalizedMsg];
+              console.log(`📈 [Realtime] UI Atualizada. Total: ${newList.length}`);
+              return newList;
             });
           }
         )
         .subscribe((status) => {
-          console.log(`📡 Status da conexão Realtime: ${status}`);
+          console.log(`📡 [Realtime] Status da conexão: ${status}`);
         })
 
       channelRef.current = channel
@@ -112,6 +119,7 @@ export function useMessages(options: UseMessagesOptions) {
 
     return () => {
       if (channel) {
+        console.log('🔌 [Realtime] Desconectando canal');
         supabase.removeChannel(channel)
       }
     }

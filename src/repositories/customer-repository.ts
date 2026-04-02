@@ -150,11 +150,9 @@ async function enrichCustomerData(customer: Customer, channelUserId: string): Pr
  * Atualizar cliente
  */
 export async function updateCustomer(customerId: string, updates: any): Promise<Customer | null> {
-  const dbUpdates = { ...updates, updated_at: new Date().toISOString() };
-  
   const { data, error } = await supabase
     .from('customers')
-    .update(dbUpdates)
+    .update(updates)
     .eq('id', customerId)
     .select()
     .single();
