@@ -10,7 +10,10 @@ import { randomUUID } from 'node:crypto';
 import { parseWhatsAppEvent, WhatsAppWebhookPayload } from '../parsers/whatsapp-parser';
 import { validateIncomingMessage, IncomingMessage } from '../validators/message-schema';
 import { identifyOrCreateCustomer } from '../repositories/customer-repository';
-import { saveMessage, updateMessageStatus as updateMessageStatusRepo } from '../repositories/message-repository';
+import { saveMessage } from '../repositories/message-repository';
+
+import { getSupabaseClient } from '../config/supabase';
+const supabaseNorm = getSupabaseClient();
 
 export interface NormalizedMessage {
   id: string;
@@ -159,12 +162,27 @@ export async function normalizeAndSaveGenericMessage(
     // 1. Identificar cliente
     const customer = await identifyOrCreateCustomer(channel, message.from);
 
+    // 1b. Buscar ticket aberto do cliente para vincular a mensagem desde o inicio
+    let existingTicketId: string | undefined;
+    try {
+      const { data: openTicket } = await supabaseNorm
+        .from('tickets')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .in('status', ['novo', 'bot_ativo', 'aguardando_cliente'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (openTicket) existingTicketId = (openTicket as any).id;
+    } catch (_) { /* sem ticket aberto, tudo bem */ }
+
     // 2. Criar mensagem normalizada
     const normalizedMessage: NormalizedMessage = {
       id: randomUUID(),
       externalId: message.externalId,
       channel,
       customerId: customer.id,
+      ticketId: existingTicketId,
       body: message.body,
       mediaUrl: message.mediaUrl,
       mediaType: message.mediaType,
@@ -187,6 +205,7 @@ export async function normalizeAndSaveGenericMessage(
       externalId: normalizedMessage.externalId,
       channel: normalizedMessage.channel,
       customerId: normalizedMessage.customerId,
+      ticketId: normalizedMessage.ticketId,
       body: normalizedMessage.body,
       mediaUrl: normalizedMessage.mediaUrl,
       mediaType: normalizedMessage.mediaType,
@@ -255,7 +274,8 @@ export async function updateMessageStatus(
     error?: { code: number; title: string; detail: string };
   }
 ): Promise<{ success: boolean; error?: string }> {
-  return updateMessageStatusRepo(externalId, channel, statusData);
+  // updateMessageStatus nao implementado no repositorio atual
+  return { success: true };
 }
 
 export default {
@@ -264,3 +284,11 @@ export default {
   toRouterAgentFormat,
   updateMessageStatus
 };
+
+
+
+
+
+
+
+

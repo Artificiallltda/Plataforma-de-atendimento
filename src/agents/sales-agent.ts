@@ -221,7 +221,7 @@ export class SalesAgent {
     }
 
     prompt += `MENSAGEM ATUAL DO LEAD: "${message}"\n\n`;
-    prompt += `Responda com JSON:`;
+    prompt += `Responda EXCLUSIVAMENTE com um bloco JSON válido, sem texto antes ou depois:\n{\n  "response": "<sua resposta como consultor de vendas — empática, persuasiva e com valor agregado>",\n  "action": "responded",\n  "confidence": <0.0 a 1.0>,\n  "needsHumanHandoff": false,\n  "escalationReason": null,\n  "leadProfile": "basico" | "premium" | "enterprise" | "unknown"\n}`;
     
     return prompt;
   }

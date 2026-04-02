@@ -169,7 +169,7 @@ export class SupportAgent {
     }
 
     prompt += `MENSAGEM ATUAL DO CLIENTE: "${message}"\n\n`;
-    prompt += `Responda com JSON:`;
+    prompt += `Responda EXCLUSIVAMENTE com um bloco JSON válido, sem texto antes ou depois:\n{\n  "response": "<sua resposta técnica, empática e clara ao cliente>",\n  "action": "responded",\n  "confidence": <0.0 a 1.0>,\n  "needsHumanHandoff": false,\n  "escalationReason": null\n}`;
     
     return prompt;
   }

@@ -57,7 +57,7 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
             .eq('id', result.message.ticketId)
             .single();
           
-          if (ticket && (ticket.status === 'aguardando_humano' || ticket.status === 'em_atendimento' || ticket.status === 'resolvido')) {
+          if (ticket && ((ticket as any).status === 'aguardando_humano' || (ticket as any).status === 'em_atendimento' || (ticket as any).status === 'resolvido')) {
             console.log('🔇 Bot silenciado: Ticket em atendimento humano.');
             return;
           }
@@ -68,7 +68,7 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
           id: result.message.id,
           channel: 'telegram',
           customerId: result.message.customerId,
-          ticketId: result.message.ticketId || '',
+          ticketId: result.message.ticketId || undefined, // '' vira undefined para lógica de ticket funcionar
           body: result.message.body
         });
 
@@ -116,3 +116,5 @@ export default {
   initTelegramProvider,
   registerTelegramWebhook
 };
+
+

@@ -31,6 +31,18 @@ Sua única missão é entender o coração do problema do cliente e direcioná-l
 
 **OBJETIVO:** 
 Gere uma "humanResponse" que faça o cliente sentir que já começou a ser atendido, não que caiu em um menu.
+
+**FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):**
+Responda EXCLUSIVAMENTE com um único bloco JSON válido, sem nenhum texto antes ou depois:
+{
+  "sector": "suporte" | "financeiro" | "comercial",
+  "intent": "<intenção detectada, ex: consulta_preco, problema_login, fatura_atrasada, saudacao>",
+  "confidence": <número de 0.0 a 1.0>,
+  "suggestedAgent": "support" | "finance" | "sales",
+  "needsClarification": <true se a mensagem é ambígua, false caso contrário>,
+  "humanResponse": "<sua resposta elegante e natural ao cliente, SEM saudação robótica>",
+  "reasoning": "<motivo interno da classificação, 1 linha>"
+}
 `;
 
 export class RouterAgent {
@@ -40,7 +52,10 @@ export class RouterAgent {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-preview' });
+    // gemini-3.1-flash-preview NÃO EXISTE na API (Abril 2026). Usar gemini-2.5-flash (estável).
+    this.model = genAI.getGenerativeModel({ 
+      model: process.env.GEMINI_MODEL_ROUTER || 'gemini-2.5-flash' 
+    });
   }
 
   async classify(message: string, context?: any): Promise<RouterOutput> {
@@ -53,14 +68,15 @@ export class RouterAgent {
       if (!jsonMatch) throw new Error('Falha no parse');
       return JSON.parse(jsonMatch[0]);
     } catch (error) {
+      console.error('❌ RouterAgent.classify() falhou:', error instanceof Error ? error.message : error);
       return {
         sector: 'suporte',
-        intent: 'saudacao',
-        confidence: 0.5,
+        intent: 'erro_classificacao',
+        confidence: 0.3,
         suggestedAgent: 'support',
         needsClarification: true,
-        humanResponse: "Olá! Seja bem-vindo à Artificiall. Como posso ajudar você hoje?",
-        reasoning: 'Fallback de erro'
+        humanResponse: "Desculpe pela demora! Estou processando sua mensagem. Pode me contar mais sobre o que precisa?",
+        reasoning: `Fallback de erro: ${error instanceof Error ? error.message : 'desconhecido'}`
       };
     }
   }
@@ -76,7 +92,7 @@ export class RouterAgent {
   async logDecision(ticketId: string, output: RouterOutput, durationMs: number): Promise<void> {
     if (!ticketId) return;
     try {
-      await supabase.from('agent_logs').insert({
+      await (supabase.from('agent_logs') as any).insert({
         ticket_id: ticketId,
         agent_type: 'router',
         action: 'classified',
@@ -91,3 +107,4 @@ export class RouterAgent {
 
 export const routerAgent = new RouterAgent();
 export const getRouterAgent = () => routerAgent;
+

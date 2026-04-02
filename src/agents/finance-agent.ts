@@ -94,8 +94,9 @@ export class FinanceAgent {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    // gemini-3.1-flash-preview NÃO EXISTE na API (Abril 2026). Usar gemini-2.5-flash (estável).
     this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-3.1-flash-preview'
+      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-2.5-flash'
     });
   }
 
@@ -178,7 +179,7 @@ export class FinanceAgent {
     }
 
     prompt += `MENSAGEM ATUAL DO CLIENTE: "${message}"\n\n`;
-    prompt += `Responda com JSON:`;
+    prompt += `Responda EXCLUSIVAMENTE com um bloco JSON válido, sem texto antes ou depois:\n{\n  "response": "<sua resposta natural, empática e objetiva ao cliente>",\n  "action": "responded",\n  "confidence": <0.0 a 1.0>,\n  "needsHumanHandoff": false,\n  "escalationReason": null\n}`;
     
     return prompt;
   }

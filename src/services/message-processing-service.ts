@@ -46,8 +46,34 @@ export async function processIncomingMessage(message: {
     const classification = await getRouterAgent().classify(message.body, customerContext || undefined);
     let sector = classification.sector;
 
-    // 3. Gestão de Ticket (Criar ou Atualizar)
-    let finalTicketId = message.ticketId;
+    // 3. Gestão de Ticket (Reutilizar aberto ou Criar novo)
+    // '' (string vazia) deve ser tratado como undefined
+    let finalTicketId: string | undefined = message.ticketId || undefined;
+
+    // 3a. Buscar ticket aberto existente do cliente
+    if (!finalTicketId) {
+      try {
+        const { data: existingTicket } = await supabase
+          .from('tickets')
+          .select('id, sector')
+          .eq('customer_id', message.customerId)
+          .in('status', ['novo', 'bot_ativo', 'aguardando_cliente'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (existingTicket) {
+          const etAny = existingTicket as any;
+          finalTicketId = etAny.id;
+          // Atualizar setor se a intenção mudou
+          if (etAny.sector !== sector) {
+            await supabase.from('tickets').update({ sector: sector as any, intent: classification.intent } as any).eq('id', finalTicketId);
+          }
+        }
+      } catch (_) { /* nenhum ticket aberto, criar novo abaixo */ }
+    }
+
+    // 3b. Criar ticket novo se realmente não existe
     if (!finalTicketId) {
       const { data: newTicket, error: ticketError } = await supabase
         .from('tickets')
@@ -63,18 +89,17 @@ export async function processIncomingMessage(message: {
         .single();
 
       if (ticketError) throw ticketError;
-      finalTicketId = newTicket.id;
-      
-      // Vincular a mensagem atual ao novo ticket
-      await supabase.from('messages').update({ ticket_id: finalTicketId }).eq('id', message.id);
-    } else {
-      // Atualizar setor se a IA detectou que o cliente mudou de assunto
-      await supabase.from('tickets').update({ 
-        sector: sector, 
-        intent: classification.intent,
-        status: 'bot_ativo' // Reativar bot se ele estava aguardando
-      }).eq('id', finalTicketId);
+      finalTicketId = (newTicket as any).id;
     }
+
+    // 3c. Vincular mensagens órfãs (sem ticket_id) ao ticket correto
+    await supabase.from('messages')
+      .update({ ticket_id: finalTicketId } as any)
+      .eq('customer_id', message.customerId)
+      .is('ticket_id', null);
+
+    // 3d. Garantir que o ticket está ativo
+    await supabase.from('tickets').update({ status: "bot_ativo" } as any).eq("id", finalTicketId);
 
     // 4. Delegar para o Agente Especialista (Fluidez Cognitiva)
     let agentResponse = classification.humanResponse;
@@ -132,3 +157,7 @@ export async function processIncomingMessage(message: {
     };
   }
 }
+
+
+
+
