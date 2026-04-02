@@ -80,8 +80,8 @@ export function ModernLayout({ children }: ModernLayoutProps) {
         )}
       >
         {/* Logo Area */}
-        <div className="h-20 flex items-center px-4 border-b border-slate-100 overflow-hidden">
-          <div className="relative h-10 w-32 flex-shrink-0">
+        <div className="h-24 flex items-center px-6 border-b border-slate-100 overflow-hidden justify-center">
+          <div className="relative h-16 w-full flex-shrink-0">
             <Image 
               src="/brand/logo.png" 
               alt="Artificiall" 
@@ -90,15 +90,6 @@ export function ModernLayout({ children }: ModernLayoutProps) {
               priority
             />
           </div>
-          {isSidebarOpen && (
-            <motion.span 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="ml-1 font-black text-blue-600 text-xl tracking-tighter"
-            >
-              PAA
-            </motion.span>
-          )}
         </div>
 
         <nav className="flex-1 py-6 px-3 space-y-2">
