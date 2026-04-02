@@ -87,9 +87,51 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
     });
 
     console.log('✅ Telegram Provider inicializado');
+    
+    // 5. [NOVO] Outbound Sync: Escutar Dashboard e enviar para o Telegram
+    setupOutboundSync(provider);
   }
 
   return telegramProvider;
+}
+
+/**
+ * Monitora mensagens inseridas manualmente (humanos) e as envia para o Telegram
+ */
+function setupOutboundSync(provider: TelegramProvider) {
+  console.log('📡 Iniciando Outbound Sync (Dashboard -> Telegram)...');
+  
+  supabase
+    .channel('outbound-telegram-messages')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'sender=eq.human'
+      },
+      async (payload) => {
+        const newMessage = payload.new as any;
+        
+        // Só processa se for do canal Telegram e não tiver vindo do próprio bot/webhook
+        if (newMessage.channel === 'telegram' && newMessage.body) {
+          console.log(`📤 Enviando resposta humana para Telegram: ${newMessage.customer_id}`);
+          
+          try {
+            await provider.sendMessage({
+              to: newMessage.customer_id, // No Telegram, guardamos o chatId no customer_id
+              text: newMessage.body,
+              parseMode: 'Markdown'
+            });
+            console.log('✅ Mensagem enviada com sucesso ao Telegram.');
+          } catch (error) {
+            console.error('❌ Falha ao enviar mensagem de saída para o Telegram:', error);
+          }
+        }
+      }
+    )
+    .subscribe();
 }
 
 /**

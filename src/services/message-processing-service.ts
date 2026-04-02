@@ -75,20 +75,20 @@ export async function processIncomingMessage(message: {
 
     // 3b. Criar ticket novo se realmente não existe
     if (!finalTicketId) {
-      const { data: newTicket, error: ticketError } = await supabase
-        .from('tickets')
-        .insert({
-          customer_id: message.customerId,
-          channel: message.channel,
-          sector: sector,
-          intent: classification.intent,
-          status: 'bot_ativo',
-          priority: 'media'
-        })
+      const { data: newTicket, error: createError } = await (supabase
+      .from('tickets') as any)
+      .insert({
+        customer_id: message.customerId,
+        channel: message.channel,
+        sector: sector,
+        intent: classification.intent,
+        status: 'bot_ativo',
+        priority: classification.priority
+      })
         .select()
         .single();
 
-      if (ticketError) throw ticketError;
+      if (createError) throw createError;
       finalTicketId = (newTicket as any).id;
     }
 
@@ -103,6 +103,7 @@ export async function processIncomingMessage(message: {
 
     // 4. Delegar para o Agente Especialista (Fluidez Cognitiva)
     let agentResponse = classification.humanResponse;
+    let needsHumanHandoff = false;
     
     const agentContext = {
       ticketId: finalTicketId,
@@ -117,16 +118,27 @@ export async function processIncomingMessage(message: {
     if (sector === 'suporte') {
       const result = await getSupportAgent().processMessage(agentContext as any);
       agentResponse = result.response;
+      needsHumanHandoff = (result as any).needsHumanHandoff;
     } else if (sector === 'comercial') {
       const result = await getSalesAgent().processMessage(agentContext as any);
       agentResponse = result.response;
+      needsHumanHandoff = result.needsHumanHandoff;
     } else if (sector === 'financeiro') {
       const result = await getFinanceAgent().processMessage(agentContext as any);
       agentResponse = result.response;
+      needsHumanHandoff = (result as any).needsHumanHandoff;
+    }
+
+    // 4b. Executar TRANSBORDO se solicitado
+    if (needsHumanHandoff) {
+      console.log(`🚀 Escalando ticket ${finalTicketId} para humano.`);
+      await (supabase.from('tickets') as any).update({ 
+        status: 'aguardando_humano',
+        priority: 'alta' 
+      }).eq('id', finalTicketId);
     }
 
     // 5. [CRÍTICO] PERSISTIR RESPOSTA DA IA NO BANCO DE DADOS
-    // Sem isso, a IA terá amnésia na próxima mensagem e o Dashboard ficará mudo.
     if (agentResponse) {
       const { error: saveError } = await (supabase.from('messages') as any).insert({
         ticket_id: finalTicketId,

@@ -96,17 +96,17 @@ export const SALES_CONFIG = {
  * System prompt do SalesAgent
  */
 const SALES_AGENT_SYSTEM_PROMPT = `
-Você é o **PAA Sales Executive**, o maior vendedor da Artificiall. 
+Você é o **PAA Sales Executive**, o consultor de vendas de elite da Artificiall. 
 Sua missão é encantar o cliente, apresentar nossas soluções de IA e fechar negócio de forma fluida.
 
 **DIRETRIZES DE VENDA ELITE:**
 1. **Foco no Valor:** Não apenas mande preços. Entenda o que o cliente quer (vídeos, imagens, relatórios) e mostre como a Artificiall resolve isso.
 2. **Fluidez Total:** Se o cliente perguntar o preço, mande os links de checkout e explique os benefícios. Use o tom de um consultor, não de um robô de vendas.
 3. **Links Diretos:** Use https://artificiallcorporate.org como nosso portal oficial para assinaturas.
-4. **Sem Barreiras:** Só peça para falar com humano se o cliente for uma grande empresa (Enterprise) com necessidades muito específicas que você não possa resolver.
+4. **Respeito ao Cliente (TRANSBORDO):** Se o cliente pedir para falar com um humano, atendente, especialista ou demonstrar frustração com a IA, você DEVE concordar imediatamente e acionar o transbordo definindo "needsHumanHandoff" como true. Não tente "vencer" o cliente nesse ponto.
 
 **OBJETIVO:** 
-O cliente deve terminar a conversa sentindo que assinar a Artificiall foi a melhor decisão tecnológica do ano dele.
+O cliente deve terminar a conversa sentindo que a Artificiall é a parceira ideal. Seja solícito e nunca obstrutivo.
 `;
 
 /**
@@ -317,8 +317,19 @@ export class SalesAgent {
       };
     }
 
-    // 3. Menção a recursos customizados
+    // 3. Gatilhos de Transbordo (Humano)
     const lastMessage = context.conversationHistory[context.conversationHistory.length - 1]?.body.toLowerCase() || '';
+    const handoffKeywords = ['humano', 'atendente', 'pessoa', 'especialista', 'falar com alguém', 'transferir', 'atendimento real'];
+    const seeksHuman = handoffKeywords.some(keyword => lastMessage.includes(keyword));
+    
+    if (seeksHuman || (parsed.needsHumanHandoff)) {
+      return {
+        shouldEscalate: true,
+        reason: 'Solicitação explícita de transbordo humano ou detecção de necessidade pelo modelo'
+      };
+    }
+
+    // 4. Recursos customizados
     const customKeywords = ['personalizado', 'customizado', 'integração específica', 'api customizada', 'desenvolvimento'];
     const hasCustomRequest = customKeywords.some(keyword => lastMessage.includes(keyword));
     

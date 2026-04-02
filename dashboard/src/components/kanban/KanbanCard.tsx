@@ -46,7 +46,7 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
   const channelColor = channelIcons[ticket.channel]?.color || 'text-slate-500'
   const PriorityIcon = priority.icon
 
-  // Mock de sentimento para demonstração profissional
+  // Análise de sentimento baseada na confiança do roteador
   const sentiment = ticket.router_confidence && ticket.router_confidence > 0.8 ? 'positivo' : ticket.router_confidence && ticket.router_confidence < 0.4 ? 'negativo' : 'neutro'
   
   const sentimentConfig = {
@@ -56,6 +56,20 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
   }
   
   const SentimentIcon = sentimentConfig[sentiment].icon
+
+  const customerData = Array.isArray(ticket.customer) ? ticket.customer[0] : ticket.customer
+  const customerName = customerData?.name || 'Cliente Indisponível'
+  
+  const intentMap: Record<string, string> = {
+    'saudacao': '👋 Saudação / Início',
+    'suporte_tecnico': '🛠️ Suporte Técnico',
+    'duvida_pagamento': '💳 Dúvida de Pagamento',
+    'comercial_planos': '🚀 Interesse em Planos',
+    'reclamacao': '⚠️ Reclamação',
+    'vendas': '💰 Vendas / Checkout'
+  }
+
+  const displayIntent = intentMap[ticket.intent || ''] || ticket.intent || 'Classificando...'
 
   return (
     <motion.div
@@ -93,11 +107,11 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
         </div>
 
         <h4 className="font-extrabold text-slate-900 text-base mb-1 tracking-tight group-hover:text-blue-600 transition-colors">
-          {ticket.customer?.name || 'Cliente Indisponível'}
+          {customerName}
         </h4>
         
         <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 leading-relaxed">
-          {ticket.intent || 'Solicitação em processamento pela IA...'}
+          {displayIntent}
         </p>
 
         {/* AI & Human Status */}
