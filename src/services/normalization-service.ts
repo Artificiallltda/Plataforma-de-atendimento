@@ -170,7 +170,7 @@ export async function normalizeAndSaveGenericMessage(
         .from('tickets')
         .select('id')
         .eq('customer_id', customer.id)
-        .in('status', ['novo', 'bot_ativo', 'aguardando_cliente'])
+        .in('status', ['novo', 'bot_ativo', 'aguardando_cliente', 'aguardando_humano', 'em_atendimento'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single();

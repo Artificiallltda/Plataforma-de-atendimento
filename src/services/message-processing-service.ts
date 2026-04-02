@@ -92,14 +92,20 @@ export async function processIncomingMessage(message: {
       finalTicketId = (newTicket as any).id;
     }
 
-    // 3c. Vincular mensagens órfãs (sem ticket_id) ao ticket correto
-    await supabase.from('messages')
-      .update({ ticket_id: finalTicketId } as any)
-      .eq('customer_id', message.customerId)
-      .is('ticket_id', null);
+    // 3c. Vincular mensagens órfãs (sem ticket_id) ao ticket correto (com verificação de segurança)
+    if (finalTicketId) {
+      await supabase.from('messages')
+        .update({ ticket_id: finalTicketId } as any)
+        .eq('customer_id', message.customerId)
+        .is('ticket_id', null);
+    }
 
-    // 3d. Garantir que o ticket está ativo
-    await supabase.from('tickets').update({ status: "bot_ativo" } as any).eq("id", finalTicketId);
+    // 3d. Garantir ativação automática APENAS se o ticket for novo ou bot_ativo
+    // SE JÁ ESTIVER EM MÃOS HUMANAS, NÃO MEXEMOS NO STATUS!
+    const { data: currentStatus } = await supabase.from('tickets').select('status').eq('id', finalTicketId).single();
+    if (currentStatus && ['novo', 'aguardando_cliente'].includes((currentStatus as any).status)) {
+      await supabase.from('tickets').update({ status: "bot_ativo" } as any).eq("id", finalTicketId);
+    }
 
     // 4. Delegar para o Agente Especialista (Fluidez Cognitiva)
     let agentResponse = classification.humanResponse;

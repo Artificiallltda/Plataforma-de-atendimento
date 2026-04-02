@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Message } from '@/hooks/use-messages'
 
 interface MessageListProps {
@@ -18,6 +19,17 @@ const senderConfig = {
 }
 
 export function MessageList({ messages, loading }: MessageListProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  }, [messages])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -35,7 +47,10 @@ export function MessageList({ messages, loading }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-y-auto p-4 min-h-0 bg-slate-50/50">
+    <div 
+      ref={scrollRef}
+      className="flex-1 space-y-4 overflow-y-auto p-4 min-h-0 bg-slate-50/50"
+    >
       {messages.map((message, index) => {
         const isCustomer = message.sender === 'customer'
         const config = senderConfig[message.sender]
