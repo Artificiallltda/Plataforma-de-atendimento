@@ -52,16 +52,17 @@ export function ModernLayout({ children }: ModernLayoutProps) {
         .eq('email', user.email)
         .single()
       
-      setRole(agent?.sector || 'atendente')
+      const userRole = agent?.sector?.toLowerCase() || 'atendente'
+      setRole(userRole)
     }
     getUser()
   }, [router, supabase])
 
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['suporte', 'financeiro', 'comercial', 'supervisor'] },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['suporte', 'financeiro', 'comercial', 'supervisor', 'atendente', 'unknown'] },
     { name: 'Métricas', icon: BarChart3, path: '/analytics/feedback', roles: ['supervisor'] },
     { name: 'Atendentes', icon: Users, path: '/admin/agents', roles: ['supervisor'] },
-    { name: 'Configurações', icon: Settings, path: '/settings', roles: ['suporte', 'financeiro', 'comercial', 'supervisor'] },
+    { name: 'Configurações', icon: Settings, path: '/settings', roles: ['suporte', 'financeiro', 'comercial', 'supervisor', 'atendente'] },
   ]
 
   const handleLogout = async () => {
