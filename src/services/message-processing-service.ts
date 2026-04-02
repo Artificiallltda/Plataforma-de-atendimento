@@ -2,7 +2,6 @@
  * Message Processing Service
  */
 
-import { randomUUID } from 'node:crypto';
 import { getRouterAgent } from '../agents/router-agent';
 import { getSupabaseClient } from '../config/supabase';
 import { createHandoffFromRouter, persistHandoff, updateTicketCurrentAgent } from '../types/handoff';
@@ -17,10 +16,10 @@ export async function processIncomingMessage(message: any) {
     // 1. Contexto do cliente
     const customerContext = await getRouterAgent().getCustomerContext(message.customerId);
     
-    // 2. Histórico (Seguro: se não tiver ticketId, retorna vazio)
+    // 2. Histórico (Seguro)
     const history = message.ticketId ? await getTicketMessages(message.ticketId) : [];
 
-    // 3. Classificar
+    // 3. Classificar com IA (RouterAgent agora gera a resposta humanResponse)
     const classification = await getRouterAgent().classify(message.body, customerContext || undefined);
 
     // 4. Se não tem ticketId, criar um agora
@@ -33,7 +32,7 @@ export async function processIncomingMessage(message: any) {
           channel: message.channel,
           sector: classification.sector,
           intent: classification.intent,
-          status: 'novo',
+          status: classification.needsClarification ? 'novo' : 'bot_ativo',
           priority: 'media',
           router_confidence: classification.confidence
         })
@@ -49,14 +48,17 @@ export async function processIncomingMessage(message: any) {
 
     // 5. Handoff e Update
     const handoff = createHandoffFromRouter(finalTicketId, message.customerId, {} as any, history, classification, message.channel);
-    await persistHandoff(handoff);
+    
+    // Tentar persistir handoff (silencioso se a tabela ainda estiver sendo criada)
+    await persistHandoff(handoff).catch(() => console.warn('⚠️ Tabela handoffs ainda não pronta'));
+    
     await updateTicketCurrentAgent(finalTicketId, classification.suggestedAgent, classification.sector);
     await getRouterAgent().logDecision(finalTicketId, classification, 0);
 
     return { 
       ticketId: finalTicketId, 
       needsClarification: classification.needsClarification,
-      clarificationMessage: 'Pode me dar mais detalhes?',
+      clarificationMessage: classification.humanResponse || 'Como posso ajudar você hoje?',
       handoff,
       sector: classification.sector
     };
@@ -67,7 +69,7 @@ export async function processIncomingMessage(message: any) {
 }
 
 async function getTicketMessages(ticketId: string) {
-  if (!ticketId || ticketId.length < 30) return []; // Validação UUID simples
+  if (!ticketId || ticketId.length < 30) return [];
   const { data } = await supabase.from('messages').select('*').eq('ticket_id', ticketId).limit(10);
   return data || [];
 }
