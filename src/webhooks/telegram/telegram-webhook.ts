@@ -93,9 +93,16 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
  */
 export function initTelegramProvider(botToken: string): TelegramProvider {
   if (!telegramProvider) {
-    const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_STATIC_URL;
+    // Usar WEBHOOK mode sempre que TELEGRAM_WEBHOOK_URL estiver definida
+    // Usar POLLING mode APENAS para desenvolvimento local (sem a variável)
+    const useWebhookMode = !!process.env.TELEGRAM_WEBHOOK_URL;
     
-    telegramProvider = new TelegramProvider(botToken, { polling: !isProd });
+    console.log(`[Telegram] Modo: ${useWebhookMode ? 'WEBHOOK (produção)' : 'POLLING (desenvolvimento)'}`);
+
+    telegramProvider = new TelegramProvider(botToken, { 
+      polling: !useWebhookMode 
+    });
+    
     const provider = telegramProvider;
     provider.onMessage((msg) => handleIncomingTelegramMessage(msg, provider));
 
@@ -109,26 +116,16 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
  * Configurar a URL do Webhook no Telegram (chamado após o servidor estar UP)
  */
 export function setupTelegramWebhookUrl(botToken: string): void {
-  const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_STATIC_URL;
-  if (!isProd) {
-    console.log('ℹ️ [Telegram] Modo desenvolvimento — setWebHook ignorado (usando polling)');
+  const domain = process.env.TELEGRAM_WEBHOOK_URL;
+  
+  if (!domain) {
+    console.log('ℹ️ [Telegram] TELEGRAM_WEBHOOK_URL não definida — setWebHook ignorado (modo polling/dev)');
     return;
   }
 
   // Garantir que o provider foi inicializado
   const provider = initTelegramProvider(botToken);
   const bot = (provider as any).bot;
-
-  let domain = process.env.TELEGRAM_WEBHOOK_URL || process.env.FRONTEND_URL;
-  
-  if (!domain && process.env.RAILWAY_STATIC_URL) {
-    domain = `https://${process.env.RAILWAY_STATIC_URL}`;
-  }
-
-  if (!domain || domain.includes('undefined')) {
-    console.error('❌ [Telegram] URL de Webhook não definida. Configure TELEGRAM_WEBHOOK_URL.');
-    return;
-  }
 
   // Sanitização: remove barra no final e garante HTTPS
   const baseUrl = domain.replace(/\/$/, '').replace('http://', 'https://');

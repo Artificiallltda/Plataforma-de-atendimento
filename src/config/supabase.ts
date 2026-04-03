@@ -132,6 +132,7 @@ let supabaseInstance: SupabaseClient<Database> | null = null;
 export function getSupabaseClient(): SupabaseClient<Database> {
   if (!supabaseInstance) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const isServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
@@ -139,6 +140,9 @@ export function getSupabaseClient(): SupabaseClient<Database> {
         'Supabase não configurado. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL no .env'
       );
     }
+
+    console.log(`📡 [Supabase] Inicializando em: ${supabaseUrl}`);
+    console.log(`🔐 [Supabase] Tipo de chave: ${isServiceKey ? 'SERVICE_ROLE (Bypass RLS)' : 'ANON (Subject to RLS)'}`);
 
     supabaseInstance = createClient<Database>(supabaseUrl, supabaseKey, {
       auth: {
@@ -155,7 +159,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
       }
     });
 
-    console.log('✅ Cliente Supabase inicializado');
+    console.log('✅ Cliente Supabase pronto');
   }
 
   return supabaseInstance;
