@@ -92,7 +92,11 @@ export default function DashboardPage() {
 
       {/* Board */}
       <div className="flex-1 min-h-0">
-        <KanbanBoard initialTickets={tickets} sectorFilter={sector} />
+        <KanbanBoard 
+          initialTickets={tickets} 
+          sectorFilter={sector} 
+          isLoading={ticketsLoading} 
+        />
       </div>
     </div>
   )

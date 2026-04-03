@@ -30,6 +30,7 @@ function cn(...inputs: ClassValue[]) {
 interface KanbanBoardProps {
   initialTickets: Ticket[]
   sectorFilter?: string
+  isLoading?: boolean
 }
 
 const columns = [
@@ -40,10 +41,9 @@ const columns = [
   { id: 'resolvido', title: 'Resolvidos', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' }
 ]
 
-export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) {
+export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanBoardProps) {
   const router = useRouter()
   const [boardData, setBoardData] = useState<Record<string, Ticket[]>>({})
-  const [loading, setLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const supabase = createClient()
 
@@ -84,8 +84,8 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
     
     // Copy the current state
     const newBoardData = { ...boardData }
-    const startCol = Array.from(newBoardData[startColId])
-    const finishCol = startColId === finishColId ? startCol : Array.from(newBoardData[finishColId])
+    const startCol = Array.from(newBoardData[startColId] || [])
+    const finishCol = startColId === finishColId ? startCol : Array.from(newBoardData[finishColId] || [])
 
     const [movedTicket] = startCol.splice(source.index, 1)
     
@@ -196,7 +196,7 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                     <div>
                       <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{col.title}</h4>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">
-                        {boardData[col.id]?.length || 0} Atendimentos
+                        {isLoading ? '...' : `${boardData[col.id]?.length || 0} Atendimentos`}
                       </p>
                     </div>
                   </div>
@@ -214,31 +214,42 @@ export function KanbanBoard({ initialTickets, sectorFilter }: KanbanBoardProps) 
                         snapshot.isDraggingOver && "bg-white/30"
                       )}
                     >
-                      {boardData[col.id]?.map((ticket, index) => (
-                        <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="transition-transform"
-                            >
-                              <KanbanCard 
-                                ticket={ticket} 
-                                isDragging={snapshot.isDragging}
-                                onClick={(t) => router.push(`/tickets/${t.id}`)}
-                              />
+                      {isLoading ? (
+                        // Skeleton Loaders
+                        <div className="space-y-4">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="h-24 bg-white/50 animate-pulse rounded-3xl border border-white/40 shadow-sm" />
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          {boardData[col.id]?.map((ticket, index) => (
+                            <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="transition-transform"
+                                >
+                                  <KanbanCard 
+                                    ticket={ticket} 
+                                    isDragging={snapshot.isDragging}
+                                    onClick={(t) => router.push(`/tickets/${t.id}`)}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          
+                          {/* Empty State visual */}
+                          {(!boardData[col.id] || boardData[col.id].length === 0) && (
+                            <div className="h-32 rounded-3xl border-2 border-dashed border-slate-300/30 flex items-center justify-center">
+                               <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter opacity-50">Vazio</p>
                             </div>
                           )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                      
-                      {/* Empty State visual */}
-                      {boardData[col.id]?.length === 0 && (
-                        <div className="h-32 rounded-3xl border-2 border-dashed border-slate-300/30 flex items-center justify-center">
-                           <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter opacity-50">Vazio</p>
-                        </div>
+                        </>
                       )}
                     </div>
                   )}

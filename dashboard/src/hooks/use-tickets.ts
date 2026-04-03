@@ -102,6 +102,9 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
         })
 
         setTickets(sortedData)
+        
+        // Garantir um tempo mínimo de loading para evitar o flash de "0 atendimentos"
+        await new Promise(resolve => setTimeout(resolve, 500))
       } catch (err: any) {
         console.error('Erro ao carregar tickets:', err)
         setError(err)
