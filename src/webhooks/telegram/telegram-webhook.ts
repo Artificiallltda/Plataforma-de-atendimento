@@ -69,17 +69,29 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
     provider.onMessage((msg) => handleIncomingTelegramMessage(msg, provider));
 
     if (isProd) {
-      const domain = process.env.FRONTEND_URL || `https://${process.env.RAILWAY_STATIC_URL}`;
-      const webhookUrl = `${domain}/webhooks/telegram`;
+      // Prioridade: Variável específica > URL do Frontend > Domínio estático do Railway
+      let domain = process.env.TELEGRAM_WEBHOOK_URL || process.env.FRONTEND_URL;
       
-      const bot = (provider as any).bot;
-      bot.setWebHook(webhookUrl)
-        .then(() => {
-          console.log(`🚀 Webhook configurado: ${webhookUrl}`);
-          return bot.getWebHookInfo();
-        })
-        .then((info: any) => console.log('📊 Status do Webhook no Telegram:', info))
-        .catch((err: any) => console.error('❌ Erro Webhook:', err));
+      if (!domain && process.env.RAILWAY_STATIC_URL) {
+        domain = `https://${process.env.RAILWAY_STATIC_URL}`;
+      }
+
+      if (!domain || domain.includes('undefined')) {
+        console.error('❌ Erro: URL de Webhook não definida. Configure TELEGRAM_WEBHOOK_URL no Railway.');
+      } else {
+        // Sanitização: remove barra no final e garante HTTPS
+        const baseUrl = domain.replace(/\/$/, '').replace('http://', 'https://');
+        const webhookUrl = `${baseUrl}/webhooks/telegram`;
+
+        const bot = (provider as any).bot;
+        bot.setWebHook(webhookUrl)
+          .then(() => {
+            console.log(`🚀 Webhook do Telegram configurado com sucesso: ${webhookUrl}`);
+            return bot.getWebHookInfo();
+          })
+          .then((info: any) => console.log('📊 Status do Webhook no Telegram:', info))
+          .catch((err: any) => console.error(`❌ Falha no setWebHook do Telegram (${webhookUrl}):`, err.message));
+      }
     }
 
     setupOutboundSync(provider);
