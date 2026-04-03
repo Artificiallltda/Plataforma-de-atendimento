@@ -38,15 +38,14 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
 
-        // Buscar feedback CSAT (SNAKE_CASE)
+        // Buscar feedback CSAT
         let csatQuery = supabase
           .from('feedback')
           .select('*')
           .eq('type', 'csat')
           .gte('created_at', startDate.toISOString())
-          .order('created_at', { ascending: true })
 
-        const { data: csatData } = await csatQuery
+        const { data: csatDataRaw } = await csatQuery
 
         // Buscar feedback NPS
         let npsQuery = supabase
@@ -54,9 +53,11 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
           .select('*')
           .eq('type', 'nps')
           .gte('created_at', startDate.toISOString())
-          .order('created_at', { ascending: true })
 
-        const { data: npsData } = await npsQuery
+        const { data: npsDataRaw } = await npsQuery
+
+        const csatData = (csatDataRaw || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        const npsData = (npsDataRaw || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
         // Processar CSAT por dia
         const csatByDayMap = new Map<string, { sum: number; count: number }>()

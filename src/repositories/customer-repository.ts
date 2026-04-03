@@ -12,12 +12,12 @@ const supabase = getSupabaseClient();
 
 export interface CustomerInput {
   channel: 'whatsapp' | 'telegram' | 'web';
-  channelUserId: string;
+  channel_user_id: string;
   name?: string;
   email?: string;
   phone?: string;
-  guruSubscriptionId?: string;
-  asaasCustomerId?: string;
+  guru_subscription_id?: string;
+  asaas_customer_id?: string;
 }
 
 export interface Customer {
@@ -64,12 +64,12 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
     .from('customers')
     .insert({
       channel: customer.channel,
-      channel_user_id: customer.channelUserId,
+      channel_user_id: customer.channel_user_id,
       name: customer.name || null,
       email: customer.email || null,
       phone: customer.phone || null,
-      guru_subscription_id: customer.guruSubscriptionId || null,
-      asaas_customer_id: customer.asaasCustomerId || null
+      guru_subscription_id: customer.guru_subscription_id || null,
+      asaas_customer_id: customer.asaas_customer_id || null
     })
     .select()
     .single();
@@ -79,8 +79,7 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
     return null;
   }
 
-  console.log('✅ Cliente criado:', data.id);
-  return data;
+  return data as any;
 }
 
 /**
@@ -107,7 +106,7 @@ export async function identifyOrCreateCustomer(
 
   customer = await createCustomer({
     channel: channel as 'whatsapp' | 'telegram' | 'web',
-    channelUserId,
+    channel_user_id: channelUserId,
     name
   });
 

@@ -23,21 +23,27 @@ export function useAgents(enabled: boolean = true) {
       const { data: agentsData } = await supabase
         .from('agents')
         .select('*')
-        .order('sector')
-        .order('name')
 
       if (!agentsData) {
         setLoading(false)
         return
       }
 
+      // Ordenação manual no JavaScript (Imune a erros de nome de coluna no banco)
+      const sortedAgentsData = [...agentsData].sort((a, b) => {
+        // Ordenar primeiro por setor e depois por nome
+        const sectorComp = (a.sector || '').localeCompare(b.sector || '')
+        if (sectorComp !== 0) return sectorComp
+        return (a.name || '').localeCompare(b.name || '')
+      })
+
       // Buscar carga de tickets para cada agente
       const agentsWithTickets = await Promise.all(
-        agentsData.map(async (agent) => {
+        sortedAgentsData.map(async (agent) => {
           const { count } = await supabase
             .from('tickets')
             .select('id', { count: 'exact', head: true })
-            .eq('assignedTo', agent.id)
+            .or(`assignedTo.eq.${agent.id},assigned_to.eq.${agent.id}`) // Busca flexível para os dois casos
             .neq('status', 'resolvido')
 
           return {

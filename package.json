@@ -58,7 +58,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "echo 'Build skip'",
     "start": "tsx src/server.ts",
-    "reset-db": "tsx scripts/reset-db.ts"
+    "x-reset-db-disabled": "tsx scripts/reset-db.ts"
   },
   "keywords": [],
   "author": "",

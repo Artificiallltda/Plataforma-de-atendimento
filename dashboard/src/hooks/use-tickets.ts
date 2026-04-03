@@ -65,10 +65,18 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
           query = query.eq('status', status)
         }
 
-        const { data, error: fetchError } = await query.order('created_at', { ascending: false })
+        const { data, error: fetchError } = await query
 
         if (fetchError) throw fetchError
-        setTickets(data || [])
+        
+        // Ordenação manual no JavaScript (Imune a erros de nome de coluna no banco)
+        const sortedData = (data || []).sort((a, b) => {
+          const dateA = new Date(a.created_at || a.createdAt || a.createdat || 0).getTime()
+          const dateB = new Date(b.created_at || b.createdAt || b.createdat || 0).getTime()
+          return dateB - dateA // Decrescente
+        })
+
+        setTickets(sortedData)
       } catch (err: any) {
         console.error('Erro ao carregar tickets:', err)
         setError(err)
