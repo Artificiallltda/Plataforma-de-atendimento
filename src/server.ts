@@ -45,9 +45,8 @@ fastify.register(registerFeedbackTriggerRoutes);
 
 // Registrar Telegram (se token configurado)
 if (process.env.TELEGRAM_BOT_TOKEN) {
-  fastify.register((instance, opts, done) => {
-    registerTelegramWebhook(instance, process.env.TELEGRAM_BOT_TOKEN!);
-    done();
+  fastify.register(async (instance) => {
+    await registerTelegramWebhook(instance, process.env.TELEGRAM_BOT_TOKEN!);
   });
 } else {
   console.log('⚠️ TELEGRAM_BOT_TOKEN não configurado - Telegram desabilitado');
