@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { Ticket } from '@/hooks/use-tickets'
 import { KanbanCard } from './KanbanCard'
+import { KanbanCardSkeleton } from './KanbanCardSkeleton'
 import { 
   Plus, 
   MoreHorizontal, 
@@ -18,7 +19,7 @@ import {
   Zap,
   Loader2
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -40,6 +41,30 @@ const columns = [
   { id: 'em_atendimento', title: 'Em Atendimento', icon: User, color: 'text-orange-500', bg: 'bg-orange-50' },
   { id: 'resolvido', title: 'Resolvidos', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' }
 ]
+
+// Variantes para animação escalonada (Staggered)
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+}
+
+const columnVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1] as any
+    }
+  }
+}
 
 export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanBoardProps) {
   const router = useRouter()
@@ -177,14 +202,17 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
 
       {/* Columns Container */}
       <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex-1 overflow-x-auto pb-6 scrollbar-hide"
+        >
           <div className="flex gap-8 min-h-full pb-4">
-            {columns.map((col, index) => (
+            {columns.map((col) => (
               <motion.div 
                 key={col.id} 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                variants={columnVariants}
                 className="flex flex-col w-[350px] min-w-[350px] bg-slate-200/20 backdrop-blur-md rounded-[32px] h-full border border-white/40 shadow-sm"
               >
                 {/* Column Header */}
@@ -195,9 +223,15 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
                     </div>
                     <div>
                       <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{col.title}</h4>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">
-                        {isLoading ? '...' : `${boardData[col.id]?.length || 0} Atendimentos`}
-                      </p>
+                      {isLoading ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="h-2 w-16 bg-slate-200 animate-pulse rounded-full" />
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">
+                          {boardData[col.id]?.length || 0} Atendimentos
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="h-2 w-2 rounded-full bg-slate-300" />
@@ -215,32 +249,33 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
                       )}
                     >
                       {isLoading ? (
-                        // Skeleton Loaders
                         <div className="space-y-4">
                           {[1, 2, 3].map(i => (
-                            <div key={i} className="h-24 bg-white/50 animate-pulse rounded-3xl border border-white/40 shadow-sm" />
+                            <KanbanCardSkeleton key={i} />
                           ))}
                         </div>
                       ) : (
                         <>
-                          {boardData[col.id]?.map((ticket, index) => (
-                            <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="transition-transform"
-                                >
-                                  <KanbanCard 
-                                    ticket={ticket} 
-                                    isDragging={snapshot.isDragging}
-                                    onClick={(t) => router.push(`/tickets/${t.id}`)}
-                                  />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+                          <AnimatePresence mode="popLayout">
+                            {boardData[col.id]?.map((ticket, index) => (
+                              <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="transition-transform"
+                                  >
+                                    <KanbanCard 
+                                      ticket={ticket} 
+                                      isDragging={snapshot.isDragging}
+                                      onClick={(t) => router.push(`/tickets/${t.id}`)}
+                                    />
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                          </AnimatePresence>
                           {provided.placeholder}
                           
                           {/* Empty State visual */}
@@ -257,7 +292,7 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
               </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </DragDropContext>
     </div>
   )
