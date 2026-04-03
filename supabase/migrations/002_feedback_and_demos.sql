@@ -9,7 +9,7 @@
 -- TABELA: feedback
 -- Descrição: Feedback dos clientes (CSAT e NPS)
 -- ============================================================================
-CREATE TABLE feedback (
+CREATE TABLE IF NOT EXISTS feedback (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticketId      UUID REFERENCES tickets(id) ON DELETE CASCADE,
   customerId    UUID REFERENCES customers(id) ON DELETE CASCADE,
@@ -20,17 +20,31 @@ CREATE TABLE feedback (
 );
 
 -- Índices para performance
-CREATE INDEX idx_feedback_ticket ON feedback(ticketId);
-CREATE INDEX idx_feedback_customer ON feedback(customerId);
-CREATE INDEX idx_feedback_type ON feedback(type);
-CREATE INDEX idx_feedback_created ON feedback(createdAt);
-CREATE INDEX idx_feedback_score ON feedback(score);
+CREATE INDEX IF NOT EXISTS idx_feedback_ticket ON feedback(ticketId);
+CREATE INDEX IF NOT EXISTS idx_feedback_customer ON feedback(customerId);
+CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(type);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(createdAt);
+CREATE INDEX IF NOT EXISTS idx_feedback_score ON feedback(score);
+
+CREATE INDEX IF NOT EXISTS idx_nps_history_customer ON nps_history(customerId);
+CREATE INDEX IF NOT EXISTS idx_nps_history_created ON nps_history(createdAt);
+CREATE INDEX IF NOT EXISTS idx_nps_history_classification ON nps_history(classification);
+
+CREATE INDEX IF NOT EXISTS idx_demos_lead ON demos(leadId);
+CREATE INDEX IF NOT EXISTS idx_demos_scheduled ON demos(scheduledAt);
+CREATE INDEX IF NOT EXISTS idx_demos_status ON demos(status);
+
+CREATE INDEX IF NOT EXISTS idx_tech_tickets_customer ON technical_tickets(customerId);
+CREATE INDEX IF NOT EXISTS idx_tech_tickets_ticket ON technical_tickets(ticketId);
+CREATE INDEX IF NOT EXISTS idx_tech_tickets_status ON technical_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_tech_tickets_severity ON technical_tickets(severity);
+CREATE INDEX IF NOT EXISTS idx_tech_tickets_created ON technical_tickets(reportedAt);
 
 -- ============================================================================
 -- TABELA: nps_history
 -- Descrição: Histórico de NPS por cliente (para controle de periodicidade)
 -- ============================================================================
-CREATE TABLE nps_history (
+CREATE TABLE IF NOT EXISTS nps_history (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customerId    UUID REFERENCES customers(id) ON DELETE CASCADE,
   score         INT NOT NULL CHECK (score >= 0 AND score <= 10),
@@ -47,7 +61,7 @@ CREATE INDEX idx_nps_history_classification ON nps_history(classification);
 -- TABELA: demos
 -- Descrição: Demonstrações agendadas pelo SalesAgent
 -- ============================================================================
-CREATE TABLE demos (
+CREATE TABLE IF NOT EXISTS demos (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   leadId        UUID REFERENCES customers(id) ON DELETE CASCADE,
   scheduledAt   TIMESTAMPTZ NOT NULL,
@@ -66,7 +80,7 @@ CREATE INDEX idx_demos_status ON demos(status);
 -- TABELA: technical_tickets
 -- Descrição: Tickets técnicos reportados pelo SupportAgent
 -- ============================================================================
-CREATE TABLE technical_tickets (
+CREATE TABLE IF NOT EXISTS technical_tickets (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customerId        UUID REFERENCES customers(id) ON DELETE CASCADE,
   ticketId          UUID REFERENCES tickets(id) ON DELETE CASCADE,
@@ -92,7 +106,7 @@ CREATE INDEX idx_tech_tickets_created ON technical_tickets(reportedAt);
 -- ============================================================================
 
 -- View: CSAT médio por período
-CREATE VIEW v_csat_summary AS
+CREATE OR REPLACE VIEW v_csat_summary AS
 SELECT 
   DATE_TRUNC('day', createdAt) as date,
   COUNT(*) as count,
@@ -104,8 +118,7 @@ FROM feedback
 WHERE type = 'csat'
 GROUP BY DATE_TRUNC('day', createdAt);
 
--- View: NPS por período
-CREATE VIEW v_nps_summary AS
+CREATE OR REPLACE VIEW v_nps_summary AS
 SELECT 
   DATE_TRUNC('day', createdAt) as date,
   COUNT(*) as total,
@@ -121,8 +134,7 @@ SELECT
 FROM nps_history
 GROUP BY DATE_TRUNC('day', createdAt);
 
--- View: Demos agendadas por status
-CREATE VIEW v_demos_summary AS
+CREATE OR REPLACE VIEW v_demos_summary AS
 SELECT 
   status,
   COUNT(*) as count,
@@ -130,14 +142,14 @@ SELECT
 FROM demos
 GROUP BY status, DATE_TRUNC('day', scheduledAt);
 
--- View: Tickets técnicos por severidade
-CREATE VIEW v_tech_tickets_summary AS
+CREATE OR REPLACE VIEW v_tech_tickets_summary AS
 SELECT 
   severity,
   status,
   COUNT(*) as count
 FROM technical_tickets
 GROUP BY severity, status;
+
 
 -- ============================================================================
 -- FUNÇÕES E TRIGGERS
