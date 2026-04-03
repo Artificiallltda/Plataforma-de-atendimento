@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -34,7 +34,9 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
-  const supabase = createClient()
+  
+  // Estabilizar a instância do Supabase para evitar loops de re-inscrição
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     let channel: RealtimeChannel | null = null
@@ -89,17 +91,20 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
       loadTickets()
 
       channel = supabase
-        .channel('tickets-changes-all')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+        .channel('tickets-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, (payload) => {
+          console.log('🔔 [Realtime] Mudança detectada em tickets:', payload.eventType)
           loadTickets()
         })
-        .subscribe()
+        .subscribe((status) => {
+          console.log('📡 [Realtime] Status da subscrição de tickets:', status)
+        })
     }
 
     return () => {
       if (channel) supabase.removeChannel(channel)
     }
-  }, [sector, status, enabled, supabase])
+  }, [sector, status, enabled]) // supabase removido das dependências
 
   return { tickets, loading, error }
 }

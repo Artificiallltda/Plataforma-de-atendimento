@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -33,7 +33,9 @@ export function useMessages(options: UseMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
+  
+  // Estabilizar a referência do cliente Supabase para evitar loops
+  const supabase = useMemo(() => createClient(), [])
   const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export function useMessages(options: UseMessagesOptions) {
             // Filtro removido para maior robustez
           },
           (payload) => {
-            console.log('🔔 [Realtime] Nova mensagem detectada no banco!', payload.new);
+            console.log('🔔 [Realtime] Nova mensagem detectada no banco!', payload.eventType);
             
             const newMessage = payload.new as any;
             
@@ -124,7 +126,7 @@ export function useMessages(options: UseMessagesOptions) {
           }
         )
         .subscribe((status) => {
-          console.log(`📡 [Realtime] Status da conexão: ${status}`);
+          console.log(`📡 [Realtime] Status da conexão de mensagens: ${status}`);
         })
 
       channelRef.current = channel
@@ -136,7 +138,7 @@ export function useMessages(options: UseMessagesOptions) {
         supabase.removeChannel(channel)
       }
     }
-  }, [ticketId, customer_id, enabled, supabase])
+  }, [ticketId, customer_id, enabled]) // supabase removido das dependências
 
   return { messages, loading, error }
 }

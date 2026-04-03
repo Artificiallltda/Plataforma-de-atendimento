@@ -145,16 +145,48 @@ export function setupTelegramWebhookUrl(botToken: string): void {
 }
 
 function setupOutboundSync(provider: TelegramProvider) {
-  supabase.channel('outbound-telegram').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'sender=eq.human' }, 
-  async (payload) => {
-    const newMessage = payload.new as any;
-    if (newMessage.channel === 'telegram') {
-      const { data: customer } = await (supabase.from('customers') as any).select('channel_user_id').eq('id', newMessage.customer_id).single();
-      if (customer?.channel_user_id) {
-        await provider.sendMessage({ to: customer.channel_user_id, text: newMessage.body, parseMode: 'Markdown' });
+  supabase.channel('outbound-telegram').on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'messages', filter: 'sender=eq.human' }, 
+    async (payload) => {
+      const newMessage = payload.new as any;
+      if (newMessage.channel !== 'telegram') return;
+
+      // 1. Buscar chat_id do cliente
+      const { data: customer } = await (supabase.from('customers') as any)
+        .select('channel_user_id')
+        .eq('id', newMessage.customer_id)
+        .single();
+      
+      if (!customer?.channel_user_id) return;
+
+      // 2. Buscar nome do atendente humano (sender_id referencia tabela agents)
+      let agentName = 'Atendente';
+      if (newMessage.sender_id) {
+        const { data: agent } = await (supabase.from('agents') as any)
+          .select('name')
+          .eq('id', newMessage.sender_id)
+          .single();
+        
+        if (agent) {
+          agentName = agent.name || 'Atendente';
+        }
       }
+
+      // 3. Formatar mensagem com identificação
+      const formattedBody = `*${agentName}*:\n${newMessage.body}`;
+
+      await provider.sendMessage({ 
+        to: customer.channel_user_id, 
+        text: formattedBody, 
+        parseMode: 'Markdown' 
+      });
+
+      console.log(`✅ [Telegram Outbound] Mensagem de "${agentName}" enviada para ${customer.channel_user_id}`);
     }
-  }).subscribe();
+  ).subscribe((status) => {
+    console.log('📡 [Telegram Outbound] Status da subscrição:', status);
+  });
 }
 
 /**
