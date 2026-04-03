@@ -9,17 +9,17 @@ import { getSupabaseClient } from '../config/supabase';
 const supabase = getSupabaseClient();
 
 export interface MessageInput {
-  externalId: string;
+  external_id: string;
   channel: 'whatsapp' | 'telegram' | 'web';
-  customerId: string;
-  ticketId?: string;
+  customer_id: string;
+  ticket_id?: string;
   body: string;
-  mediaUrl?: string;
-  mediaType?: 'audio' | 'image' | 'document' | 'video';
+  media_url?: string;
+  media_type?: 'audio' | 'image' | 'document' | 'video';
   sender: 'customer' | 'bot' | 'human';
-  senderId?: string;
+  sender_id?: string;
   timestamp?: Date;
-  rawPayload?: any;
+  raw_payload?: any;
 }
 
 /**
@@ -27,20 +27,20 @@ export interface MessageInput {
  */
 export async function saveMessage(message: MessageInput): Promise<{ id: string; success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('messages')
+    const { data, error } = await (supabase
+      .from('messages') as any)
       .insert({
-        external_id: message.externalId,
+        external_id: message.external_id,
         channel: message.channel,
-        customer_id: message.customerId,
-        ticket_id: message.ticketId || null,
+        customer_id: message.customer_id,
+        ticket_id: message.ticket_id || null,
         body: message.body,
-        media_url: message.mediaUrl || null,
-        media_type: message.mediaType || null,
+        media_url: message.media_url || null,
+        media_type: message.media_type || null,
         sender: message.sender,
-        sender_id: message.senderId || null,
+        sender_id: message.sender_id || null,
         timestamp: message.timestamp?.toISOString() || new Date().toISOString(),
-        raw_payload: message.rawPayload ? JSON.stringify(message.rawPayload) : null
+        raw_payload: message.raw_payload ? JSON.stringify(message.raw_payload) : null
       })
       .select()
       .single();

@@ -15,8 +15,8 @@ export type Urgency = 'low' | 'medium' | 'high' | 'critical';
  */
 export interface AgentHandoff {
   // Identificação
-  handoffId: string;           // UUID único do handoff
-  ticketId: string;            // Ticket em andamento
+  handoff_id: string;           // UUID único do handoff
+  ticket_id: string;            // Ticket em andamento
   timestamp: Date;             // Momento do handoff
   
   // Origem e Destino
@@ -25,7 +25,7 @@ export interface AgentHandoff {
   
   // Contexto da Conversa
   context: MessageContext[];   // Histórico completo (últimas 10 mensagens)
-  customerProfile: CustomerProfile; // Perfil enriquecido do cliente
+  customer_profile: CustomerProfile; // Perfil enriquecido do cliente
   
   // Classificação
   sector: Sector;
@@ -34,7 +34,7 @@ export interface AgentHandoff {
   urgency: Urgency;
   
   // Ferramentas Executadas
-  toolResults?: ToolResult[];  // Resultados de tools já chamadas
+  tool_results?: ToolResult[];  // Resultados de tools já chamadas
   
   // Metadados
   channel: 'whatsapp' | 'telegram' | 'web';
@@ -49,7 +49,7 @@ export interface MessageContext {
   sender: 'customer' | 'bot' | 'human';
   body: string;
   timestamp: Date;
-  agentType?: AgentType;       // Se foi bot, qual agente
+  agent_type?: AgentType;       // Se foi bot, qual agente
 }
 
 /**
@@ -61,18 +61,18 @@ export interface CustomerProfile {
   email?: string;
   phone?: string;
   channel: 'whatsapp' | 'telegram' | 'web';
-  channelUserId: string;
+  channel_user_id: string;
   plan?: 'basico' | 'premium' | 'enterprise';
-  guruSubscriptionId?: string;
-  asaasCustomerId?: string;
-  financialStatus?: 'em-dia' | 'inadimplente';
-  activeTicketId?: string;
-  recentTickets?: Array<{
+  guru_subscription_id?: string;
+  asaas_customer_id?: string;
+  financial_status?: 'em-dia' | 'inadimplente';
+  active_ticket_id?: string;
+  recent_tickets?: Array<{
     id: string;
     sector: string;
     intent: string;
     status: string;
-    csatScore?: number;
+    csat_score?: number;
   }>;
 }
 
@@ -80,19 +80,19 @@ export interface CustomerProfile {
  * Resultado de ferramenta executada
  */
 export interface ToolResult {
-  toolName: string;
+  tool_name: string;
   result: any;
   error?: string;
-  durationMs?: number;
+  duration_ms?: number;
 }
 
 /**
  * Criar handoff a partir de classificação do RouterAgent
  */
 export function createHandoffFromRouter(
-  ticketId: string,
-  customerId: string,
-  customerProfile: CustomerProfile,
+  ticket_id: string,
+  customer_id: string,
+  customer_profile: CustomerProfile,
   messages: MessageContext[],
   routerOutput: {
     sector: Sector;
@@ -103,13 +103,13 @@ export function createHandoffFromRouter(
   channel: 'whatsapp' | 'telegram' | 'web'
 ): AgentHandoff {
   return {
-    handoffId: randomUUID(),
-    ticketId,
+    handoff_id: randomUUID(),
+    ticket_id,
     timestamp: new Date(),
     from: 'router',
     to: routerOutput.suggestedAgent,
     context: messages.slice(-10), // Últimas 10 mensagens
-    customerProfile,
+    customer_profile,
     sector: routerOutput.sector,
     intent: routerOutput.intent,
     confidence: routerOutput.confidence,
@@ -126,22 +126,22 @@ export async function persistHandoff(handoff: AgentHandoff): Promise<{ success: 
   const { supabase } = await import('../config/supabase');
 
   try {
-    const { error } = await supabase
-      .from('handoffs')
+    const { error } = await (supabase
+      .from('handoffs') as any)
       .insert({
-        ticket_id: handoff.ticketId,
+        ticket_id: handoff.ticket_id,
         from_agent: handoff.from,
         to_agent: handoff.to,
         reason: `Classificação: ${handoff.intent} (confidence: ${handoff.confidence})`,
         urgency: handoff.urgency,
         context_snapshot: {
           context: handoff.context,
-          customerProfile: handoff.customerProfile,
+          customer_profile: handoff.customer_profile,
           sector: handoff.sector,
           intent: handoff.intent,
           confidence: handoff.confidence
         },
-        tool_results: handoff.toolResults ? JSON.stringify(handoff.toolResults) : null
+        tool_results: handoff.tool_results ? JSON.stringify(handoff.tool_results) : null
       });
 
     if (error) {
@@ -149,7 +149,7 @@ export async function persistHandoff(handoff: AgentHandoff): Promise<{ success: 
       return { success: false, error: error.message };
     }
 
-    console.log(`✅ Handoff persistido: ${handoff.handoffId} (${handoff.from} → ${handoff.to})`);
+    console.log(`✅ Handoff persistido: ${handoff.handoff_id} (${handoff.from} → ${handoff.to})`);
     return { success: true };
   } catch (error) {
     console.error('❌ Exceção ao persistir handoff:', error);
@@ -161,20 +161,20 @@ export async function persistHandoff(handoff: AgentHandoff): Promise<{ success: 
  * Atualizar ticket com agente atual
  */
 export async function updateTicketCurrentAgent(
-  ticketId: string,
-  agentType: AgentType,
+  ticket_id: string,
+  agent_type: AgentType,
   sector: Sector
 ): Promise<void> {
   const { supabase } = await import('../config/supabase');
 
   try {
-    await supabase
-      .from('tickets')
+    await (supabase
+      .from('tickets') as any)
       .update({
-        current_agent: agentType,
+        current_agent: agent_type,
         sector
       })
-      .eq('id', ticketId);
+      .eq('id', ticket_id);
   } catch (error) {
     console.error('❌ Erro ao atualizar ticket:', error);
   }

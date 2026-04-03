@@ -11,6 +11,7 @@ import { whatsappConfig, validateWhatsappConfig } from '../../config/whatsapp';
 import { verifyWebhookToken, getChallenge, verifyPayloadSignature } from '../../validators/whatsapp-webhook-validator';
 import { parseWhatsAppEvent, WhatsAppWebhookPayload } from '../../parsers/whatsapp-parser';
 import { normalizeAndSaveWhatsAppMessage, updateMessageStatus } from '../../services/normalization-service';
+import { processIncomingMessage } from '../../services/message-processing-service';
 
 /**
  * GET /webhooks/whatsapp
@@ -110,14 +111,26 @@ export async function whatsappWebhookPost(
         
         if (result.success) {
           console.log(`✅ ${result.messages.length} mensagem(s) normalizada(s) e persistida(s)`);
+          
+          // DISPARAR PROCESSAMENTO DE IA PARA CADA MENSAGEM (O QUE ESTAVA FALTANDO!)
+          for (const msg of result.messages) {
+            console.log(`🤖 Disparando IA para mensagem: ${msg.external_id}`);
+            processIncomingMessage({
+              id: msg.id,
+              channel: 'whatsapp',
+              customer_id: msg.customer_id,
+              ticket_id: msg.ticket_id,
+              body: msg.body
+            }).catch(err => console.error('❌ Erro no processamento assíncrono da IA (WhatsApp):', err));
+          }
         } else {
           console.error(`❌ Erros na normalização:`, result.errors);
         }
 
         for (const msg of result.messages) {
           console.log('  - Mensagem:', {
-            externalId: msg.externalId,
-            customerId: msg.customerId,
+            externalId: msg.external_id,
+            customerId: msg.customer_id,
             body: msg.body.substring(0, 50) + (msg.body.length > 50 ? '...' : '')
           });
         }

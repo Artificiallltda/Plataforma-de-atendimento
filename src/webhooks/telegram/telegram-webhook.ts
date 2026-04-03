@@ -52,11 +52,11 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
 
       try {
         // 2. Verificar Status do Ticket (Humano assume = Bot cala)
-        if (result.message.ticketId) {
+        if (result.message.ticket_id) {
           const { data: ticket } = await supabase
             .from('tickets')
             .select('status')
-            .eq('id', result.message.ticketId)
+            .eq('id', result.message.ticket_id)
             .single();
           
           if (ticket && ((ticket as any).status === 'aguardando_humano' || (ticket as any).status === 'em_atendimento' || (ticket as any).status === 'resolvido')) {
@@ -69,8 +69,8 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
         const processed = await processIncomingMessage({
           id: result.message.id,
           channel: 'telegram',
-          customerId: result.message.customerId,
-          ticketId: result.message.ticketId || undefined, // '' vira undefined para lógica de ticket funcionar
+          customer_id: result.message.customer_id,
+          ticket_id: result.message.ticket_id || undefined, // '' vira undefined para lógica de ticket funcionar
           body: result.message.body
         });
 
@@ -122,8 +122,8 @@ function setupOutboundSync(provider: TelegramProvider) {
           
           try {
             // BUSCAR O ID REAL DO TELEGRAM (NÚMERO) NO BANCO
-            const { data: customer, error: custErr } = await supabase
-              .from('customers')
+            const { data: customer, error: custErr } = await (supabase
+              .from('customers') as any)
               .select('channel_user_id')
               .eq('id', newMessage.customer_id)
               .single();
@@ -143,8 +143,8 @@ function setupOutboundSync(provider: TelegramProvider) {
               let agentSector = metadata?.agent_sector;
 
               if (!agentName && newMessage.sender_id) {
-                const { data: agent } = await supabase
-                  .from('agents')
+                const { data: agent } = await (supabase
+                  .from('agents') as any)
                   .select('name, sector')
                   .eq('id', newMessage.sender_id)
                   .single();
@@ -162,7 +162,7 @@ function setupOutboundSync(provider: TelegramProvider) {
             }
 
             const result = await provider.sendMessage({
-              to: customer.channel_user_id, // AGORA USANDO O ID CORRETO (NÚMERO)
+              to: (customer as any).channel_user_id, // AGORA USANDO O ID CORRETO (NÚMERO)
               text: `${agentPrefix}${newMessage.body}`,
               parseMode: 'Markdown'
             });

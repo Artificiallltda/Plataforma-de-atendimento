@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { feedbackAgent } from '../agents/feedback-agent';
-import { supabase } from '../config/supabase';
+import { getSupabaseClient } from '../config/supabase';
+
+const supabase = getSupabaseClient();
 
 export async function registerFeedbackTriggerRoutes(fastify: FastifyInstance) {
   /**

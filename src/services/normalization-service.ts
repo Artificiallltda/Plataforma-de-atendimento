@@ -17,16 +17,16 @@ const supabaseNorm = getSupabaseClient();
 
 export interface NormalizedMessage {
   id: string;
-  externalId: string;
+  external_id: string;
   channel: 'whatsapp' | 'telegram' | 'web';
-  customerId: string;
-  ticketId?: string;
+  customer_id: string;
+  ticket_id?: string;
   body: string;
-  mediaUrl?: string;
-  mediaType?: 'audio' | 'image' | 'document' | 'video';
+  media_url?: string;
+  media_type?: 'audio' | 'image' | 'document' | 'video';
   sender: 'customer' | 'bot' | 'human';
   timestamp: Date;
-  rawPayload: any;
+  raw_payload: any;
 }
 
 /**
@@ -68,19 +68,19 @@ export async function normalizeAndSaveWhatsAppMessage(
           // 3. Criar mensagem normalizada
           const normalizedMessage: NormalizedMessage = {
             id: randomUUID(),
-            externalId: msg.externalId,
+            external_id: msg.externalId,
             channel: 'whatsapp',
-            customerId: customer.id,
+            customer_id: customer.id,
             body: msg.body,
-            mediaUrl: msg.mediaUrl,
-            mediaType: msg.mediaType,
+            media_url: msg.mediaUrl,
+            media_type: msg.mediaType,
             sender: 'customer',
             timestamp: msg.timestamp,
-            rawPayload: msg.rawPayload
+            raw_payload: msg.rawPayload
           };
 
           // 4. Validar schema
-          const validation = validateIncomingMessage(normalizedMessage);
+          const validation = validateIncomingMessage(normalizedMessage as any);
           if (!validation.success) {
             errors.push({
               message: `Validação falhou: ${validation.errors?.join(', ')}`,
@@ -91,15 +91,15 @@ export async function normalizeAndSaveWhatsAppMessage(
 
           // 5. Persistir no Supabase
           const saveResult = await saveMessage({
-            externalId: normalizedMessage.externalId,
+            external_id: normalizedMessage.external_id,
             channel: normalizedMessage.channel,
-            customerId: normalizedMessage.customerId,
+            customer_id: normalizedMessage.customer_id,
             body: normalizedMessage.body,
-            mediaUrl: normalizedMessage.mediaUrl,
-            mediaType: normalizedMessage.mediaType,
+            media_url: normalizedMessage.media_url || undefined,
+            media_type: normalizedMessage.media_type || undefined,
             sender: normalizedMessage.sender,
             timestamp: normalizedMessage.timestamp,
-            rawPayload: normalizedMessage.rawPayload
+            raw_payload: normalizedMessage.raw_payload
           });
 
           if (saveResult.success) {
@@ -180,20 +180,20 @@ export async function normalizeAndSaveGenericMessage(
     // 2. Criar mensagem normalizada
     const normalizedMessage: NormalizedMessage = {
       id: randomUUID(),
-      externalId: message.externalId,
+      external_id: message.externalId,
       channel,
-      customerId: customer.id,
-      ticketId: existingTicketId,
+      customer_id: customer.id,
+      ticket_id: existingTicketId,
       body: message.body,
-      mediaUrl: message.mediaUrl,
-      mediaType: message.mediaType,
+      media_url: message.mediaUrl,
+      media_type: message.mediaType,
       sender: 'customer',
       timestamp: message.timestamp || new Date(),
-      rawPayload: message.rawPayload || {}
+      raw_payload: message.rawPayload || {}
     };
 
     // 3. Validar schema
-    const validation = validateIncomingMessage(normalizedMessage);
+    const validation = validateIncomingMessage(normalizedMessage as any);
     if (!validation.success) {
       return {
         success: false,
@@ -203,16 +203,16 @@ export async function normalizeAndSaveGenericMessage(
 
     // 4. Persistir no Supabase
     const saveResult = await saveMessage({
-      externalId: normalizedMessage.externalId,
+      external_id: normalizedMessage.external_id,
       channel: normalizedMessage.channel,
-      customerId: normalizedMessage.customerId,
-      ticketId: normalizedMessage.ticketId,
+      customer_id: normalizedMessage.customer_id,
+      ticket_id: normalizedMessage.ticket_id,
       body: normalizedMessage.body,
-      mediaUrl: normalizedMessage.mediaUrl,
-      mediaType: normalizedMessage.mediaType,
+      media_url: normalizedMessage.media_url || undefined,
+      media_type: normalizedMessage.media_type || undefined,
       sender: normalizedMessage.sender,
       timestamp: normalizedMessage.timestamp,
-      rawPayload: normalizedMessage.rawPayload
+      raw_payload: normalizedMessage.raw_payload
     });
 
     if (saveResult.success) {
@@ -249,12 +249,12 @@ export function toRouterAgentFormat(message: NormalizedMessage): {
   mediaType?: string;
 } {
   return {
-    customerId: message.customerId,
+    customerId: message.customer_id,
     channel: message.channel,
     body: message.body,
     timestamp: message.timestamp,
-    hasMedia: !!message.mediaUrl,
-    mediaType: message.mediaType
+    hasMedia: !!message.media_url,
+    mediaType: message.media_type
   };
 }
 

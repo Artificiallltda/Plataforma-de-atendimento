@@ -19,19 +19,19 @@ const supabase = getSupabaseClient();
 export async function processIncomingMessage(message: {
   id: string;
   channel: 'whatsapp' | 'telegram' | 'web';
-  customerId: string;
-  ticketId?: string;
+  customer_id: string;
+  ticket_id?: string;
   body: string;
 }) {
   try {
     // 1. Recuperar contexto do cliente e histórico REAL (Cliente + Bot)
-    const customerContext = await getRouterAgent().getCustomerContext(message.customerId);
+    const customerContext = await getRouterAgent().getCustomerContext(message.customer_id);
     
     // Buscar as últimas 15 mensagens para dar memória profunda à IA
     const { data: historyData } = await supabase
       .from('messages')
       .select('*')
-      .eq('ticket_id', message.ticketId)
+      .eq('ticket_id', message.ticket_id)
       .order('timestamp', { ascending: true })
       .limit(15);
 
@@ -48,7 +48,7 @@ export async function processIncomingMessage(message: {
 
     // 3. Gestão de Ticket (Reutilizar aberto ou Criar novo)
     // '' (string vazia) deve ser tratado como undefined
-    let finalTicketId: string | undefined = message.ticketId || undefined;
+    let finalTicketId: string | undefined = message.ticket_id || undefined;
 
     // 3a. Buscar ticket aberto existente do cliente
     if (!finalTicketId) {
@@ -56,7 +56,7 @@ export async function processIncomingMessage(message: {
         const { data: existingTicket } = await supabase
           .from('tickets')
           .select('id, sector')
-          .eq('customer_id', message.customerId)
+          .eq('customer_id', message.customer_id)
           .in('status', ['novo', 'bot_ativo', 'aguardando_cliente'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -78,7 +78,7 @@ export async function processIncomingMessage(message: {
       const { data: newTicket, error: createError } = await (supabase
       .from('tickets') as any)
       .insert({
-        customer_id: message.customerId,
+        customer_id: message.customer_id,
         channel: message.channel,
         sector: sector,
         intent: classification.intent,
@@ -94,17 +94,16 @@ export async function processIncomingMessage(message: {
 
     // 3c. Vincular mensagens órfãs (sem ticket_id) ao ticket correto (com verificação de segurança)
     if (finalTicketId) {
-      await supabase.from('messages')
-        .update({ ticket_id: finalTicketId } as any)
-        .eq('customer_id', message.customerId)
+      await (supabase.from('messages') as any)
+        .update({ ticket_id: finalTicketId })
+        .eq('customer_id', message.customer_id)
         .is('ticket_id', null);
     }
 
     // 3d. Garantir ativação automática APENAS se o ticket for novo ou bot_ativo
-    // SE JÁ ESTIVER EM MÃOS HUMANAS, NÃO MEXEMOS NO STATUS!
     const { data: currentStatus } = await supabase.from('tickets').select('status').eq('id', finalTicketId).single();
     if (currentStatus && ['novo', 'aguardando_cliente'].includes((currentStatus as any).status)) {
-      await supabase.from('tickets').update({ status: "bot_ativo" } as any).eq("id", finalTicketId);
+      await (supabase.from('tickets') as any).update({ status: "bot_ativo" }).eq("id", finalTicketId);
     }
 
     // 4. Delegar para o Agente Especialista (Fluidez Cognitiva)
@@ -113,9 +112,9 @@ export async function processIncomingMessage(message: {
     
     const agentContext = {
       ticketId: finalTicketId,
-      customerId: message.customerId,
+      customerId: message.customer_id,
       conversationHistory: history.concat([{ sender: 'customer', body: message.body, timestamp: new Date() }]),
-      customerProfile: customerContext?.customer || { id: message.customerId, isActive: true },
+      customerProfile: customerContext?.customer || { id: message.customer_id, isActive: true },
       sector: sector as any,
       intent: classification.intent
     };
@@ -161,7 +160,7 @@ export async function processIncomingMessage(message: {
     if (agentResponse) {
       const { error: saveError } = await (supabase.from('messages') as any).insert({
         ticket_id: finalTicketId,
-        customer_id: message.customerId,
+        customer_id: message.customer_id,
         channel: message.channel,
         body: agentResponse,
         sender: 'bot',
@@ -173,7 +172,7 @@ export async function processIncomingMessage(message: {
     }
 
     // 6. Atualizar metadados do ticket
-    await updateTicketCurrentAgent(finalTicketId, sector as any, sector);
+    await updateTicketCurrentAgent(finalTicketId as any, sector as any, sector as any);
     
     return { 
       ticketId: finalTicketId, 
@@ -183,7 +182,7 @@ export async function processIncomingMessage(message: {
   } catch (error) {
     console.error('❌ Erro no processamento de mensagens:', error);
     return { 
-      ticketId: message.ticketId, 
+      ticket_id: message.ticket_id, 
       clarificationMessage: 'Peço desculpas, tive uma oscilação na minha rede neural. Poderia repetir sua solicitação?' 
     };
   }
