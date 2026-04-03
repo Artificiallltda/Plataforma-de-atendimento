@@ -33,12 +33,34 @@ export function useMessages(options: UseMessagesOptions) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   // Estabilizar a referência do cliente Supabase para evitar loops
   const supabase = useMemo(() => createClient(), [])
   const channelRef = useRef<RealtimeChannel | null>(null)
 
+  // Detectar quando a sessão está pronta para evitar Race Condition
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session)
+    })
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      const authed = !!session
+      setIsAuthenticated(authed)
+      console.log('🔐 [Auth] Estado de autenticação (Messages):', event, authed)
+    })
+    
+    return () => authListener.subscription.unsubscribe()
+  }, [supabase])
+
+  useEffect(() => {
+    // Aguarda a autenticação antes de tentar carregar ou subscrever
+    if (!enabled || !isAuthenticated) {
+      if (!isAuthenticated && !loading) setLoading(true)
+      return
+    }
+
     let channel: RealtimeChannel | null = null
 
     const loadMessages = async () => {
@@ -138,7 +160,7 @@ export function useMessages(options: UseMessagesOptions) {
         supabase.removeChannel(channel)
       }
     }
-  }, [ticketId, customer_id, enabled]) // supabase removido das dependências
+  }, [ticketId, customer_id, enabled, isAuthenticated]) // isAuthenticated adicionado às dependências
 
   return { messages, loading, error }
 }

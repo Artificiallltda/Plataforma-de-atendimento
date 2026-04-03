@@ -34,11 +34,34 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   // Estabilizar a instância do Supabase para evitar loops de re-inscrição
   const supabase = useMemo(() => createClient(), [])
 
+  // Detectar quando a sessão está pronta para evitar Race Condition
   useEffect(() => {
+    // Verificar estado inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session)
+    })
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      const authed = !!session
+      setIsAuthenticated(authed)
+      console.log('🔐 [Auth] Estado de autenticação (Tickets):', event, authed)
+    })
+    
+    return () => authListener.subscription.unsubscribe()
+  }, [supabase])
+
+  useEffect(() => {
+    // Aguarda a autenticação antes de tentar carregar ou subscrever
+    if (!enabled || !isAuthenticated) {
+      if (!isAuthenticated && !loading) setLoading(true)
+      return
+    }
+
     let channel: RealtimeChannel | null = null
 
     const loadTickets = async () => {
@@ -104,7 +127,7 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
     return () => {
       if (channel) supabase.removeChannel(channel)
     }
-  }, [sector, status, enabled]) // supabase removido das dependências
+  }, [sector, status, enabled, isAuthenticated]) // isAuthenticated adicionado às dependências
 
   return { tickets, loading, error }
 }
