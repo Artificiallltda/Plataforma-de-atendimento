@@ -79,8 +79,20 @@ export async function normalizeAndSaveWhatsAppMessage(
             raw_payload: msg.rawPayload
           };
 
-          // 4. Validar schema
-          const validation = validateIncomingMessage(normalizedMessage as any);
+          // 4. Validar schema (Mapeando para camelCase que o Zod espera)
+          const validation = validateIncomingMessage({
+            id: normalizedMessage.id,
+            externalId: normalizedMessage.external_id,
+            channel: normalizedMessage.channel,
+            customerId: normalizedMessage.customer_id,
+            body: normalizedMessage.body,
+            mediaUrl: normalizedMessage.media_url,
+            mediaType: normalizedMessage.media_type,
+            sender: normalizedMessage.sender,
+            timestamp: normalizedMessage.timestamp,
+            rawPayload: normalizedMessage.raw_payload
+          });
+
           if (!validation.success) {
             errors.push({
               message: `Validação falhou: ${validation.errors?.join(', ')}`,
@@ -206,8 +218,21 @@ export async function normalizeAndSaveGenericMessage(
       raw_payload: message.rawPayload || {}
     };
 
-    // 3. Validar schema
-    const validation = validateIncomingMessage(normalizedMessage as any);
+    // 3. Validar schema (Mapeando para camelCase que o Zod espera)
+    const validation = validateIncomingMessage({
+      id: normalizedMessage.id,
+      externalId: normalizedMessage.external_id,
+      channel: normalizedMessage.channel,
+      customerId: normalizedMessage.customer_id,
+      ticketId: normalizedMessage.ticket_id,
+      body: normalizedMessage.body,
+      mediaUrl: normalizedMessage.media_url,
+      mediaType: normalizedMessage.media_type,
+      sender: normalizedMessage.sender,
+      timestamp: normalizedMessage.timestamp,
+      rawPayload: normalizedMessage.raw_payload
+    });
+
     if (!validation.success) {
       const validationError = `Validação falhou: ${validation.errors?.join(', ')}`;
       console.error('❌ [Norm] Validação de schema falhou:', {
