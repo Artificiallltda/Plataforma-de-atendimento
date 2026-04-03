@@ -33,15 +33,42 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
     'telegram'
   );
 
-  if (!result.success || !result.message) return;
+  if (!result.success || !result.message) {
+    console.error('❌ [Telegram] normalizeAndSaveGenericMessage FALHOU:', {
+      success: result.success,
+      error: result.error,
+      userId: msg.userId,
+      text: msg.text?.substring(0, 80)
+    });
+    return;
+  }
+
+  console.log('✅ [Telegram] Mensagem normalizada e salva:', {
+    messageId: result.message.id,
+    customerId: result.message.customer_id,
+    ticketId: result.message.ticket_id ?? 'nenhum ainda'
+  });
 
   try {
+    console.log('🔍 [Telegram] Iniciando processIncomingMessage:', {
+      messageId: result.message.id,
+      customerId: result.message.customer_id,
+      ticketId: result.message.ticket_id ?? 'nenhum ainda',
+      body: result.message.body?.substring(0, 80)
+    });
+
     const processed = await processIncomingMessage({
       id: result.message.id,
       channel: 'telegram',
       customer_id: result.message.customer_id,
       ticket_id: result.message.ticket_id || undefined,
       body: result.message.body
+    });
+
+    console.log('✅ [Telegram] processIncomingMessage concluído:', {
+      ticketId: processed.ticketId,
+      sector: processed.sector,
+      hasResponse: !!processed.clarificationMessage
     });
 
     if (processed.clarificationMessage) {
@@ -53,7 +80,11 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
       });
     }
   } catch (error) {
-    console.error('❌ Erro no fluxo de IA:', error);
+    console.error('❌ [Telegram] Erro no fluxo de IA:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      userId: msg.userId
+    });
   }
 }
 

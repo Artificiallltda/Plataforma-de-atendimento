@@ -163,6 +163,13 @@ export async function normalizeAndSaveGenericMessage(
     // 1. Identificar cliente (agora com nome)
     const customer = await identifyOrCreateCustomer(channel, message.from, message.name);
 
+    console.log('👤 [Norm] Cliente identificado/criado:', {
+      customerId: customer.id,
+      channel,
+      channelUserId: message.from,
+      name: customer.name
+    });
+
     // 1b. Buscar ticket aberto do cliente para vincular a mensagem desde o inicio
     let existingTicketId: string | undefined;
     try {
@@ -175,7 +182,14 @@ export async function normalizeAndSaveGenericMessage(
         .limit(1)
         .single();
       if (openTicket) existingTicketId = (openTicket as any).id;
-    } catch (_) { /* sem ticket aberto, tudo bem */ }
+    } catch (ticketLookupError) {
+      console.warn('⚠️ [Norm] Erro ao buscar ticket aberto (assumindo nenhum):', {
+        customerId: customer.id,
+        error: ticketLookupError instanceof Error ? ticketLookupError.message : ticketLookupError
+      });
+    }
+
+    console.log('🎫 [Norm] Ticket aberto encontrado:', existingTicketId ?? 'nenhum');
 
     // 2. Criar mensagem normalizada
     const normalizedMessage: NormalizedMessage = {
@@ -195,10 +209,13 @@ export async function normalizeAndSaveGenericMessage(
     // 3. Validar schema
     const validation = validateIncomingMessage(normalizedMessage as any);
     if (!validation.success) {
-      return {
-        success: false,
-        error: `Validação falhou: ${validation.errors?.join(', ')}`
-      };
+      const validationError = `Validação falhou: ${validation.errors?.join(', ')}`;
+      console.error('❌ [Norm] Validação de schema falhou:', {
+        errors: validation.errors,
+        messageFrom: message.from,
+        body: message.body?.substring(0, 80)
+      });
+      return { success: false, error: validationError };
     }
 
     // 4. Persistir no Supabase
@@ -216,17 +233,33 @@ export async function normalizeAndSaveGenericMessage(
     });
 
     if (saveResult.success) {
+      console.log('💾 [Norm] Mensagem salva no banco:', {
+        messageId: normalizedMessage.id,
+        customerId: normalizedMessage.customer_id,
+        ticketId: normalizedMessage.ticket_id ?? 'null'
+      });
       return {
         success: true,
         message: normalizedMessage
       };
     } else {
+      console.error('❌ [Norm] Falha ao salvar mensagem no banco:', {
+        error: saveResult.error,
+        customerId: normalizedMessage.customer_id,
+        channel
+      });
       return {
         success: false,
         error: saveResult.error
       };
     }
   } catch (error) {
+    console.error('❌ [Norm] Exceção não tratada em normalizeAndSaveGenericMessage:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      channel,
+      from: message.from
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido'

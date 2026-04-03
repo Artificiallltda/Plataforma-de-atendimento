@@ -26,6 +26,11 @@ export async function processIncomingMessage(message: {
   try {
     // 1. Recuperar contexto do cliente e histórico REAL (Cliente + Bot)
     const customerContext = await getRouterAgent().getCustomerContext(message.customer_id);
+
+    console.log('🧠 [MPS] Contexto do cliente recuperado:', {
+      customerId: message.customer_id,
+      hasContext: !!customerContext
+    });
     
     // Buscar as últimas 15 mensagens para dar memória profunda à IA
     const { data: historyData } = await supabase
@@ -41,10 +46,18 @@ export async function processIncomingMessage(message: {
       timestamp: new Date(m.timestamp)
     }));
 
+    console.log('📜 [MPS] Histórico carregado:', { ticketId: message.ticket_id, count: history.length });
+
     // 2. Classificação Cognitiva (Router)
     // Se o ticket já tem um setor, o Router apenas valida se houve mudança de intenção
     const classification = await getRouterAgent().classify(message.body, customerContext || undefined);
     let sector = classification.sector;
+
+    console.log('🎯 [MPS] Classificação do RouterAgent:', {
+      sector,
+      intent: classification.intent,
+      priority: classification.priority
+    });
 
     // 3. Gestão de Ticket (Reutilizar aberto ou Criar novo)
     // '' (string vazia) deve ser tratado como undefined
@@ -65,12 +78,19 @@ export async function processIncomingMessage(message: {
         if (existingTicket) {
           const etAny = existingTicket as any;
           finalTicketId = etAny.id;
+          console.log('♻️ [MPS] Reutilizando ticket existente:', { ticketId: etAny.id, sector: etAny.sector });
+          
           // Atualizar setor se a intenção mudou
           if (etAny.sector !== sector) {
             await (supabase.from('tickets') as any).update({ sector, intent: classification.intent }).eq('id', finalTicketId);
           }
         }
-      } catch (_) { /* nenhum ticket aberto, criar novo abaixo */ }
+      } catch (lookupError) {
+        console.warn('⚠️ [MPS] Erro ao buscar ticket existente (assumindo nenhum):', {
+          customerId: message.customer_id,
+          error: lookupError instanceof Error ? lookupError.message : lookupError
+        });
+      }
     }
 
     // 3b. Criar ticket novo se realmente não existe
@@ -90,6 +110,13 @@ export async function processIncomingMessage(message: {
 
       if (createError) throw createError;
       finalTicketId = (newTicket as any).id;
+
+      console.log('🎫 [MPS] Novo ticket criado:', {
+        ticketId: finalTicketId,
+        customerId: message.customer_id,
+        sector,
+        status: 'bot_ativo'
+      });
     }
 
     // 3c. Vincular mensagens órfãs (sem ticket_id) ao ticket correto (com verificação de segurança)
@@ -101,7 +128,16 @@ export async function processIncomingMessage(message: {
     }
 
     // 3d. Garantir ativação automática APENAS se o ticket for novo ou bot_ativo
-    const { data: currentStatus } = await supabase.from('tickets').select('status').eq('id', finalTicketId).single();
+    const { data: currentStatus, error: statusQueryError } = await supabase.from('tickets').select('status').eq('id', finalTicketId).single();
+    
+    if (statusQueryError) {
+      console.warn('⚠️ [MPS] Erro ao buscar status do ticket (prosseguindo sem silenciar bot):', {
+        ticketId: finalTicketId,
+        error: statusQueryError.message,
+        code: statusQueryError.code
+      });
+    }
+
     if (currentStatus && ['novo', 'aguardando_cliente'].includes((currentStatus as any).status)) {
       await (supabase.from('tickets') as any).update({ status: "bot_ativo" }).eq("id", finalTicketId);
     }
@@ -119,6 +155,11 @@ export async function processIncomingMessage(message: {
       intent: classification.intent
     };
 
+    console.log(`🤖 [MPS] Delegando para agente '${sector}':`, {
+      ticketId: finalTicketId,
+      historyLength: agentContext.conversationHistory.length
+    });
+
     // Chamar o agente correto baseado na classificação fluida
     if (sector === 'suporte') {
       const result = await getSupportAgent().processMessage(agentContext as any);
@@ -134,6 +175,13 @@ export async function processIncomingMessage(message: {
       needsHumanHandoff = (result as any).needsHumanHandoff;
     }
 
+    console.log('💬 [MPS] Resposta do agente:', {
+      agent: sector,
+      hasResponse: !!agentResponse,
+      needsHumanHandoff,
+      responsePreview: agentResponse?.substring(0, 100)
+    });
+
     // 4b. Executar TRANSBORDO se solicitado
     if (needsHumanHandoff) {
       console.log(`🚀 Escalando ticket ${finalTicketId} para humano.`);
@@ -145,10 +193,11 @@ export async function processIncomingMessage(message: {
 
     // 4c. SE JÁ ESTIVER EM MÃOS HUMANAS OU SE HOUVER SINAL DE VIDA HUMANA RECENTE, PARAMOS AQUI
     const hasRecentHumanMsg = history.some(m => m.sender === 'human');
-    const isHumanControl = ['em_atendimento', 'aguardando_humano'].includes((currentStatus as any).status);
+    const ticketStatus = (currentStatus as any)?.status ?? '';
+    const isHumanControl = ['em_atendimento', 'aguardando_humano'].includes(ticketStatus);
 
     if (isHumanControl || hasRecentHumanMsg) {
-      console.log(`🔕 [Bot] Ticket ${finalTicketId} sob controle humano (Status: ${currentStatus?.status}, Humano no histórico: ${hasRecentHumanMsg}). Silenciando.`);
+      console.log(`🔕 [Bot] Ticket ${finalTicketId} sob controle humano (Status: ${ticketStatus || 'desconhecido'}, Humano no histórico: ${hasRecentHumanMsg}). Silenciando.`);
       return { 
         ticketId: finalTicketId, 
         clarificationMessage: null,
@@ -180,9 +229,15 @@ export async function processIncomingMessage(message: {
       sector: sector
     };
   } catch (error) {
-    console.error('❌ Erro no processamento de mensagens:', error);
+    console.error('❌ [MPS] EXCEÇÃO CRÍTICA em processIncomingMessage:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      customerId: message.customer_id,
+      ticketId: message.ticket_id,
+      channel: message.channel
+    });
     return { 
-      ticket_id: message.ticket_id, 
+      ticketId: message.ticket_id, 
       clarificationMessage: 'Peço desculpas, tive uma oscilação na minha rede neural. Poderia repetir sua solicitação?' 
     };
   }

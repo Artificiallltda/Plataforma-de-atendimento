@@ -52,6 +52,12 @@ export async function saveMessage(message: MessageInput): Promise<{ id: string; 
 
     return { id: data.id, success: true };
   } catch (error: any) {
+    console.error('❌ [MessageRepo] Exceção ao salvar mensagem:', {
+      error: error.message,
+      stack: error.stack,
+      channel: message.channel,
+      customerId: message.customer_id
+    });
     return { id: '', success: false, error: error.message };
   }
 }
