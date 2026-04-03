@@ -19,11 +19,13 @@ let telegramProvider: TelegramProvider | null = null;
  */
 export function initTelegramProvider(botToken: string): TelegramProvider {
   if (!telegramProvider) {
-    // Railway (Production) -> Desativar Polling se possível, mas manter como fallback seguro
-    const isProd = process.env.NODE_ENV === 'production';
+    // Railway (Production) -> Priorizar Webhook, desativar Polling para evitar 429
+    const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_STATIC_URL;
     
+    console.log(`[Telegram PAA] Inicializando em modo ${isProd ? 'WEBHOOK' : 'POLLING'}...`);
+
     telegramProvider = new TelegramProvider(botToken, { 
-      polling: true // Mantemos polling mas limpamos a lógica de IA duplicada
+      polling: !isProd // Se for prod, polling = false
     });
     
     const provider = telegramProvider;
@@ -92,90 +94,81 @@ export function initTelegramProvider(botToken: string): TelegramProvider {
     
     // 5. [NOVO] Outbound Sync: Escutar Dashboard e enviar para o Telegram
     setupOutboundSync(provider);
-  }
+    }
 
-  return telegramProvider;
-}
+    return telegramProvider;
+    }
 
-/**
- * Monitora mensagens inseridas manualmente (humanos) e as envia para o Telegram
- */
-function setupOutboundSync(provider: TelegramProvider) {
-  console.log('📡 Iniciando Outbound Sync (Dashboard -> Telegram)...');
-  
-  supabase
+    /**
+    * Monitora mensagens inseridas manualmente (humanos) e as envia para o Telegram
+    */
+    function setupOutboundSync(provider: TelegramProvider) {
+    console.log('📡 Iniciando Outbound Sync (Dashboard -> Telegram)...');
+
+    supabase
     .channel('outbound-telegram-messages')
     .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: 'sender=eq.human'
-      },
-      async (payload) => {
-        const newMessage = payload.new as any;
-        
-        // Só processa se for do canal Telegram e não tiver vindo do próprio bot/webhook
-        if (newMessage.channel === 'telegram' && newMessage.body) {
-          console.log(`📤 Recuperando ID real do Telegram para o cliente UUID: ${newMessage.customer_id}`);
-          
-          try {
-            // BUSCAR O ID REAL DO TELEGRAM (NÚMERO) NO BANCO
-            const { data: customer, error: custErr } = await (supabase
-              .from('customers') as any)
-              .select('channel_user_id')
-              .eq('id', newMessage.customer_id)
-              .single();
+    'postgres_changes',
+    {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'messages',
+    filter: 'sender=eq.human'
+    },
+    async (payload) => {
+    const newMessage = payload.new as any;
 
-            if (custErr || !customer?.channel_user_id) {
-              console.error(`❌ Não foi possível encontrar o ID do Telegram para o UUID ${newMessage.customer_id}:`, custErr);
-              return;
-            }
+    // Só processa se for do canal Telegram e não tiver vindo do próprio bot/webhook
+    if (newMessage.channel === 'telegram' && newMessage.body) {
+      console.log(`📤 Mensagem detectada para Telegram. UUID Cliente: ${newMessage.customer_id}`);
 
-            console.log(`📡 Enviando mensagem para o ChatID Telegram: ${customer.channel_user_id}`);
-            
-            // BUSCAR NOME DO AGENTE PARA IDENTIFICAÇÃO (FALBACK PARA METADADOS)
-            let agentPrefix = '';
-            if (newMessage.sender === 'human') {
-              const metadata = newMessage.raw_payload as any;
-              let agentName = metadata?.agent_name;
-              let agentSector = metadata?.agent_sector;
+      try {
+        // BUSCAR O ID REAL DO TELEGRAM (NÚMERO) NO BANCO - Usando snake_case conforme migration 003
+        const { data: customer, error: custErr } = await (supabase
+          .from('customers') as any)
+          .select('channel_user_id')
+          .eq('id', newMessage.customer_id)
+          .single();
 
-              if (!agentName && newMessage.sender_id) {
-                const { data: agent } = await (supabase
-                  .from('agents') as any)
-                  .select('name, sector')
-                  .eq('id', newMessage.sender_id)
-                  .single();
-                
-                if (agent) {
-                  agentName = agent.name;
-                  agentSector = agent.sector;
-                }
-              }
-              
-              if (agentName) {
-                const sectorLabel = agentSector ? ` (${agentSector.charAt(0).toUpperCase() + agentSector.slice(1)})` : '';
-                agentPrefix = `*${agentName}${sectorLabel}*: `;
-              }
-            }
+        if (custErr || !customer?.channel_user_id) {
+          console.error(`❌ Não foi possível encontrar o ID do Telegram para o UUID ${newMessage.customer_id}. Verifique se a coluna 'channel_user_id' existe.`, custErr);
+          return;
+        }
 
-            const result = await provider.sendMessage({
-              to: (customer as any).channel_user_id, // AGORA USANDO O ID CORRETO (NÚMERO)
-              text: `${agentPrefix}${newMessage.body}`,
-              parseMode: 'Markdown'
-            });
-            console.log(`✅ Resultado do envio para Telegram: ${result ? 'Sucesso' : 'Falha'}`);
-          } catch (error) {
-            console.error('❌ Falha ao enviar mensagem de saída para o Telegram:', error);
+        console.log(`📡 Enviando mensagem para o ChatID Telegram: ${customer.channel_user_id}`);
+
+        // BUSCAR NOME DO AGENTE PARA IDENTIFICAÇÃO
+        let agentPrefix = '';
+        if (newMessage.sender_id) {
+          const { data: agent } = await (supabase
+            .from('agents') as any)
+            .select('name, sector')
+            .eq('id', newMessage.sender_id)
+            .single();
+
+          if (agent) {
+            const sectorLabel = agent.sector ? ` (${agent.sector.charAt(0).toUpperCase() + agent.sector.slice(1)})` : '';
+            agentPrefix = `*${agent.name}${sectorLabel}*: `;
           }
         }
-      }
-    )
-    .subscribe();
-}
 
+        const result = await provider.sendMessage({
+          to: customer.channel_user_id,
+          text: `${agentPrefix}${newMessage.body}`,
+          parseMode: 'Markdown'
+        });
+
+        console.log(`✅ Resultado do envio para Telegram (${customer.channel_user_id}): ${result ? 'Sucesso' : 'Falha'}`);
+      } catch (error) {
+        console.error('❌ Falha crítica ao enviar mensagem de saída para o Telegram:', error);
+      }
+    }
+    }
+    )
+    .subscribe((status) => {
+    console.log(`🔔 Status do canal Outbound Telegram: ${status}`);
+    });
+    }
 /**
  * Registrar rotas do webhook Telegram
  */

@@ -49,7 +49,7 @@ export class TelegramProvider {
     options: {
       polling?: boolean;
       webhookUrl?: string;
-    } = { polling: true }
+    } = { polling: false }
   ) {
     const botOptions: TelegramBot.ConstructorOptions = {};
     
