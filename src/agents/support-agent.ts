@@ -9,7 +9,7 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { getGeminiModel } from '../core/llm/factory';
 import { supabase } from '../config/supabase';
 import { guruService } from '../integrations/guru-service';
 import { asaasService } from '../integrations/asaas-service';
@@ -64,20 +64,11 @@ O cliente deve sentir que tem um especialista sênior dedicado a ele, não que e
  * SupportAgent Class
  */
 export class SupportAgent {
-  private model: GenerativeModel;
+  private model: any;
   private retryCount: Map<string, number> = new Map();
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY não configurada. SupportAgent não pode funcionar sem IA.');
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_SUPPORT || 'gemini-3.1-pro-preview'
-    });
+    this.model = getGeminiModel(process.env.GEMINI_MODEL_SUPPORT || 'gemini-3.1-pro-preview');
   }
 
   /**

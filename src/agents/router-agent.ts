@@ -2,7 +2,7 @@
  * RouterAgent
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { getGeminiModel } from '../core/llm/factory';
 import { getSupabaseClient } from '../config/supabase';
 
 const supabase = getSupabaseClient();
@@ -46,21 +46,13 @@ Responda EXCLUSIVAMENTE com um único bloco JSON válido, sem nenhum texto antes
 `;
 
 export class RouterAgent {
-  private model: GenerativeModel;
+  private model: any;
 
   private modelFallback: any;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Modelo primário: gemini-2.5-flash. Fallback: gemini-3.1-flash-lite-preview (mais leve)
-    this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_ROUTER || 'gemini-2.5-flash' 
-    });
-    this.modelFallback = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_ROUTER_FALLBACK || 'gemini-3.1-flash-lite-preview' 
-    });
+    this.model = getGeminiModel(process.env.GEMINI_MODEL_ROUTER || 'gemini-2.5-flash');
+    this.modelFallback = getGeminiModel(process.env.GEMINI_MODEL_ROUTER_FALLBACK || 'gemini-3.1-flash-lite-preview');
   }
 
   private async tryGenerate(model: any, userPrompt: string): Promise<RouterOutput> {

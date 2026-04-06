@@ -9,7 +9,7 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { getGeminiModel } from '../core/llm/factory';
 import { supabase } from '../config/supabase';
 import { guruService } from '../integrations/guru-service';
 
@@ -113,20 +113,11 @@ O cliente deve terminar a conversa sentindo que a Artificiall é a parceira idea
  * SalesAgent Class
  */
 export class SalesAgent {
-  private model: GenerativeModel;
+  private model: any;
   private interactionCount: Map<string, number> = new Map();
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY não configurada. SalesAgent não pode funcionar sem IA.');
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_SALES || 'gemini-3.1-pro-preview'
-    });
+    this.model = getGeminiModel(process.env.GEMINI_MODEL_SALES || 'gemini-3.1-pro-preview');
   }
 
   /**

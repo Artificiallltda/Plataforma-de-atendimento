@@ -9,7 +9,7 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { getGeminiModel } from '../core/llm/factory';
 import { supabase } from '../config/supabase';
 import { asaasService } from '../integrations/asaas-service';
 import { guruService } from '../integrations/guru-service';
@@ -83,21 +83,11 @@ O cliente deve sair da conversa sentindo que o financeiro da Artificiall é o ma
  * FinanceAgent Class
  */
 export class FinanceAgent {
-  private model: GenerativeModel;
+  private model: any;
   private refundRequestCount: Map<string, number> = new Map();
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY não configurada. FinanceAgent não pode funcionar sem IA.');
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-3.1-flash-preview NÃO EXISTE na API (Abril 2026). Usar gemini-2.5-flash (estável).
-    this.model = genAI.getGenerativeModel({ 
-      model: process.env.GEMINI_MODEL_FINANCE || 'gemini-2.5-flash'
-    });
+    this.model = getGeminiModel(process.env.GEMINI_MODEL_FINANCE || 'gemini-2.5-flash');
   }
 
   /**
