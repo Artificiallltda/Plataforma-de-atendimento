@@ -51,10 +51,10 @@ export function exportTicketsToCSV(tickets: any[]) {
     { key: 'status', label: 'Status' },
     { key: 'priority', label: 'Prioridade' },
     { key: 'intent', label: 'Intenção' },
-    { key: 'currentAgent', label: 'Agente IA' },
-    { key: 'createdAt', label: 'Criado em' },
-    { key: 'resolvedAt', label: 'Resolvido em' },
-    { key: 'csatScore', label: 'CSAT' }
+    { key: 'current_agent', label: 'Agente IA' },
+    { key: 'created_at', label: 'Criado em' },
+    { key: 'resolved_at', label: 'Resolvido em' },
+    { key: 'csat_score', label: 'CSAT' }
   ])
 }
 
@@ -86,6 +86,6 @@ export function exportFeedbackToCSV(feedback: any[]) {
     { key: 'type', label: 'Tipo' },
     { key: 'score', label: 'Score' },
     { key: 'comment', label: 'Comentário' },
-    { key: 'createdAt', label: 'Data' }
+    { key: 'created_at', label: 'Data' }
   ])
 }

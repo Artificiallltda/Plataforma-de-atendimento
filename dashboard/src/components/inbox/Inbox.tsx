@@ -10,7 +10,7 @@ import { User, CheckCircle2, Bot, ShieldOff } from 'lucide-react'
 
 interface InboxProps {
   ticket: Ticket
-  senderId: string
+  sender_id: string
   onBack?: () => void
 }
 
@@ -29,11 +29,11 @@ const priorityLabels = {
   baixa: '⚪ Baixa'
 }
 
-export function Inbox({ ticket, senderId, onBack }: InboxProps) {
+export function Inbox({ ticket, sender_id, onBack }: InboxProps) {
   const router = useRouter()
   const { messages, loading } = useMessages({ 
-    ticketId: ticket.id,
-    customer_id: (ticket as any).customer_id || (ticket as any).customerId || ticket.customer_id 
+    ticket_id: ticket.id,
+    customer_id: ticket.customer_id 
   })
   const [currentStatus, setCurrentStatus] = useState(ticket.status)
 
@@ -147,10 +147,10 @@ export function Inbox({ ticket, senderId, onBack }: InboxProps) {
 
       {/* Input */}
       <MessageInput
-        ticketId={ticket.id}
-        customer_id={(ticket as any).customer_id || ticket.customer_id}
+        ticket_id={ticket.id}
+        customer_id={ticket.customer_id}
         channel={ticket.channel}
-        senderId={senderId}
+        sender_id={sender_id}
         onMessageSent={() => {}}
         onStatusChange={handleStatusChange}
       />

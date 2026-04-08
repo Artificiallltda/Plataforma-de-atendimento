@@ -46,9 +46,9 @@ export async function normalizeAndSaveWhatsAppMessage(
 ): Promise<{
   success: boolean;
   messages: NormalizedMessage[];
-  errors: Array<{ message: string; externalId?: string }>;
+  errors: Array<{ message: string; external_id?: string }>;
 }> {
-  const errors: Array<{ message: string; externalId?: string }> = [];
+  const errors: Array<{ message: string; external_id?: string }> = [];
   const normalizedMessages: NormalizedMessage[] = [];
 
   try {
@@ -82,21 +82,21 @@ export async function normalizeAndSaveWhatsAppMessage(
           // 4. Validar schema (Mapeando para camelCase que o Zod espera)
           const validation = validateIncomingMessage({
             id: normalizedMessage.id,
-            externalId: normalizedMessage.external_id,
+            external_id: normalizedMessage.external_id,
             channel: normalizedMessage.channel,
-            customerId: normalizedMessage.customer_id,
+            customer_id: normalizedMessage.customer_id,
             body: normalizedMessage.body,
-            mediaUrl: normalizedMessage.media_url,
-            mediaType: normalizedMessage.media_type,
+            media_url: normalizedMessage.media_url,
+            media_type: normalizedMessage.media_type,
             sender: normalizedMessage.sender,
             timestamp: normalizedMessage.timestamp,
-            rawPayload: normalizedMessage.raw_payload
+            raw_payload: normalizedMessage.raw_payload
           });
 
           if (!validation.success) {
             errors.push({
               message: `Validação falhou: ${validation.errors?.join(', ')}`,
-              externalId: msg.externalId
+              external_id: msg.externalId
             });
             continue;
           }
@@ -119,13 +119,13 @@ export async function normalizeAndSaveWhatsAppMessage(
           } else {
             errors.push({
               message: `Falha ao persistir: ${saveResult.error}`,
-              externalId: msg.externalId
+              external_id: msg.externalId
             });
           }
         } catch (error) {
           errors.push({
             message: error instanceof Error ? error.message : 'Erro desconhecido',
-            externalId: msg.externalId
+            external_id: msg.externalId
           });
         }
       }
@@ -156,14 +156,14 @@ export async function normalizeAndSaveWhatsAppMessage(
  */
 export async function normalizeAndSaveGenericMessage(
   message: {
-    externalId: string;
+    external_id: string;
     from: string;
     name?: string;
     body: string;
-    mediaUrl?: string;
-    mediaType?: 'audio' | 'image' | 'document' | 'video';
+    media_url?: string;
+    media_type?: 'audio' | 'image' | 'document' | 'video';
     timestamp?: Date;
-    rawPayload?: any;
+    raw_payload?: any;
   },
   channel: 'telegram' | 'web'
 ): Promise<{
@@ -176,9 +176,9 @@ export async function normalizeAndSaveGenericMessage(
     const customer = await identifyOrCreateCustomer(channel, message.from, message.name);
 
     console.log('👤 [Norm] Cliente identificado/criado:', {
-      customerId: customer.id,
+      customer_id: customer.id,
       channel,
-      channelUserId: message.from,
+      channel_user_id: message.from,
       name: customer.name
     });
 
@@ -196,7 +196,7 @@ export async function normalizeAndSaveGenericMessage(
       if (openTicket) existingTicketId = (openTicket as any).id;
     } catch (ticketLookupError) {
       console.warn('⚠️ [Norm] Erro ao buscar ticket aberto (assumindo nenhum):', {
-        customerId: customer.id,
+        customer_id: customer.id,
         error: ticketLookupError instanceof Error ? ticketLookupError.message : ticketLookupError
       });
     }
@@ -206,31 +206,31 @@ export async function normalizeAndSaveGenericMessage(
     // 2. Criar mensagem normalizada
     const normalizedMessage: NormalizedMessage = {
       id: randomUUID(),
-      external_id: message.externalId,
+      external_id: message.external_id,
       channel,
       customer_id: customer.id,
       ticket_id: existingTicketId,
       body: message.body,
-      media_url: message.mediaUrl,
-      media_type: message.mediaType,
+      media_url: message.media_url,
+      media_type: message.media_type,
       sender: 'customer',
       timestamp: message.timestamp || new Date(),
-      raw_payload: message.rawPayload || {}
+      raw_payload: message.raw_payload || {}
     };
 
     // 3. Validar schema (Mapeando para camelCase que o Zod espera)
     const validation = validateIncomingMessage({
       id: normalizedMessage.id,
-      externalId: normalizedMessage.external_id,
+      external_id: normalizedMessage.external_id,
       channel: normalizedMessage.channel,
-      customerId: normalizedMessage.customer_id,
-      ticketId: normalizedMessage.ticket_id,
+      customer_id: normalizedMessage.customer_id,
+      ticket_id: normalizedMessage.ticket_id,
       body: normalizedMessage.body,
-      mediaUrl: normalizedMessage.media_url,
-      mediaType: normalizedMessage.media_type,
+      media_url: normalizedMessage.media_url,
+      media_type: normalizedMessage.media_type,
       sender: normalizedMessage.sender,
       timestamp: normalizedMessage.timestamp,
-      rawPayload: normalizedMessage.raw_payload
+      raw_payload: normalizedMessage.raw_payload
     });
 
     if (!validation.success) {
@@ -259,9 +259,9 @@ export async function normalizeAndSaveGenericMessage(
 
     if (saveResult.success) {
       console.log('💾 [Norm] Mensagem salva no banco:', {
-        messageId: normalizedMessage.id,
-        customerId: normalizedMessage.customer_id,
-        ticketId: normalizedMessage.ticket_id ?? 'null'
+        message_id: normalizedMessage.id,
+        customer_id: normalizedMessage.customer_id,
+        ticket_id: normalizedMessage.ticket_id ?? 'null'
       });
       return {
         success: true,
@@ -270,7 +270,7 @@ export async function normalizeAndSaveGenericMessage(
     } else {
       console.error('❌ [Norm] Falha ao salvar mensagem no banco:', {
         error: saveResult.error,
-        customerId: normalizedMessage.customer_id,
+        customer_id: normalizedMessage.customer_id,
         channel
       });
       return {
@@ -299,33 +299,33 @@ export async function normalizeAndSaveGenericMessage(
  * @returns Formato para consumo do RouterAgent
  */
 export function toRouterAgentFormat(message: NormalizedMessage): {
-  customerId: string;
+  customer_id: string;
   channel: string;
   body: string;
   timestamp: Date;
-  hasMedia: boolean;
-  mediaType?: string;
+  has_media: boolean;
+  media_type?: string;
 } {
   return {
-    customerId: message.customer_id,
+    customer_id: message.customer_id,
     channel: message.channel,
     body: message.body,
     timestamp: message.timestamp,
-    hasMedia: !!message.media_url,
-    mediaType: message.media_type
+    has_media: !!message.media_url,
+    media_type: message.media_type
   };
 }
 
 /**
  * Atualizar status de mensagem (wrapper para message-repository)
  * 
- * @param externalId - ID externo da mensagem
+ * @param external_id - ID externo da mensagem
  * @param channel - Canal da mensagem
  * @param statusData - Dados de status
  * @returns Resultado da atualização
  */
 export async function updateMessageStatus(
-  externalId: string,
+  external_id: string,
   channel: 'whatsapp' | 'telegram' | 'web',
   statusData: {
     status: 'sent' | 'delivered' | 'read' | 'failed';

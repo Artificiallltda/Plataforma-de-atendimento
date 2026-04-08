@@ -25,8 +25,8 @@ export interface EscalationResult {
 }
 
 export interface EscalationAlert {
-  ticketId: string;
-  customerId: string;
+  ticket_id: string;
+  customer_id: string;
   type: 'sentiment' | 'timeout' | 'retry' | 'crisis_keywords' | 'systemic_bug';
   level: UrgencyLevel;
   message: string;
@@ -98,14 +98,11 @@ export class EscalationAgent {
     message: string,
     customerId: string
   ): Promise<EscalationResult> {
-    const results = await Promise.all([
-      this.analyzeSentiment(message),
-      this.detectKeywords(message),
-      this.checkTimeout(ticketId),
-      this.checkRetryCount(ticketId)
-    ]);
-
-    const [sentiment, keywords, timeout, retry] = results;
+    const sentiment = this.analyzeSentiment(message);
+    const keywords = this.detectKeywords(message);
+    const timeoutResult = await this.checkTimeout(ticketId);
+    const timeout = timeoutResult.isTimeout;
+    const retry = await this.checkRetryCount(ticketId);
 
     // Determinar se deve escalar
     const shouldEscalate = 
@@ -132,7 +129,7 @@ export class EscalationAgent {
       reason,
       sentimentScore: sentiment.score,
       detectedKeywords: keywords,
-      timeoutMinutes: timeout ? Math.round(timeout / 60000) : undefined,
+      timeoutMinutes: timeout ? Math.round(timeoutResult.diff / 60000) : undefined,
       retryCount: retry
     };
   }
@@ -188,18 +185,18 @@ export class EscalationAgent {
   /**
    * Verificar timeout de resposta
    */
-  async checkTimeout(ticketId: string): Promise<boolean> {
+  async checkTimeout(ticketId: string): Promise<{ isTimeout: boolean; diff: number }> {
     try {
-      const { data } = await supabase
-        .from('messages')
+      const { data } = await (supabase
+        .from('messages') as any)
         .select('timestamp, sender')
-        .eq('ticketId', ticketId)
+        .eq('ticket_id', ticketId)
         .order('timestamp', { ascending: false })
         .limit(1)
         .single();
 
       if (!data) {
-        return false;
+        return { isTimeout: false, diff: 0 };
       }
 
       // Se última mensagem foi do bot, verificar tempo
@@ -208,13 +205,13 @@ export class EscalationAgent {
         const now = Date.now();
         const diff = now - lastMessageTime;
 
-        return diff > ESCALATION_TRIGGERS.noResponseTime;
+        return { isTimeout: diff > ESCALATION_TRIGGERS.noResponseTime, diff };
       }
 
-      return false;
+      return { isTimeout: false, diff: 0 };
     } catch (error) {
       console.error('❌ Erro ao verificar timeout:', error);
-      return false;
+      return { isTimeout: false, diff: 0 };
     }
   }
 
@@ -223,12 +220,12 @@ export class EscalationAgent {
    */
   async checkRetryCount(ticketId: string): Promise<number> {
     try {
-      const { data } = await supabase
-        .from('agent_logs')
+      const { data } = await (supabase
+        .from('agent_logs') as any)
         .select('action')
-        .eq('ticketId', ticketId)
+        .eq('ticket_id', ticketId)
         .eq('action', 'responded')
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(10);
 
       return data?.length || 0;
@@ -307,7 +304,7 @@ export class EscalationAgent {
       await this.persistAlert(alert);
 
       // 2. Atualizar ticket com prioridade crítica
-      await this.updateTicketPriority(alert.ticketId, alert.level);
+      await this.updateTicketPriority(alert.ticket_id, alert.level);
 
       // 3. Notificar supervisores
       await this.notifySupervisors(alert);
@@ -315,7 +312,7 @@ export class EscalationAgent {
       // 4. Log em agent_logs
       await this.logEscalation(alert);
 
-      console.log(`🚨 EscalationAgent: Alerta acionado para ticket ${alert.ticketId}`);
+      console.log(`🚨 EscalationAgent: Alerta acionado para ticket ${alert.ticket_id}`);
       
       return { success: true };
     } catch (error) {
@@ -331,15 +328,15 @@ export class EscalationAgent {
    * Persistir alerta no Supabase
    */
   private async persistAlert(alert: EscalationAlert): Promise<void> {
-    await supabase
-      .from('alerts')
+    await (supabase
+      .from('alerts') as any)
       .insert({
-        ticketId: alert.ticketId,
+        ticket_id: alert.ticket_id,
         type: alert.type,
         level: alert.level,
         message: alert.message,
         acknowledged: false,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       });
   }
 
@@ -354,8 +351,8 @@ export class EscalationAgent {
       'critical': 'critica'
     };
 
-    await supabase
-      .from('tickets')
+    await (supabase
+      .from('tickets') as any)
       .update({
         priority: priorityMap[level],
         status: 'aguardando_humano'
@@ -369,13 +366,13 @@ export class EscalationAgent {
   private async notifySupervisors(alert: EscalationAlert): Promise<void> {
     try {
       // Buscar supervisores online
-      const { data: supervisors } = await supabase
-        .from('agents')
+      const { data: supervisors } = await (supabase
+        .from('agents') as any)
         .select('id, name, email')
         .eq('sector', 'supervisor')
-        .eq('isOnline', true);
+        .eq('is_online', true);
 
-      if (!supervisors || supervisors.length === 0) {
+      if (!supervisors || (supervisors as any).length === 0) {
         console.warn('⚠️ Nenhum supervisor online para notificar');
         return;
       }
@@ -383,17 +380,9 @@ export class EscalationAgent {
       // Enviar notificação via Telegram
       const message = this.buildNotificationMessage(alert);
       
-      for (const supervisor of supervisors) {
+      for (const supervisor of (supervisors as any)) {
         // Em produção, enviar via Telegram/Push
         console.log(`📱 Notificando supervisor ${supervisor.name}: ${message}`);
-        
-        // Placeholder para notificação real
-        // if (this.telegramProvider) {
-        //   await this.telegramProvider.sendMessage({
-        //     to: supervisor.telegramId,
-        //     text: message
-        //   });
-        // }
       }
     } catch (error) {
       console.error('❌ Erro ao notificar supervisores:', error);
@@ -412,7 +401,7 @@ export class EscalationAgent {
     };
 
     return `${emoji[alert.level]} *ALERTA DE ESCALADA*\n\n` +
-      `Ticket: ${alert.ticketId}\n` +
+      `Ticket: ${alert.ticket_id}\n` +
       `Tipo: ${alert.type}\n` +
       `Nível: ${alert.level.toUpperCase()}\n` +
       `Motivo: ${alert.message}\n\n` +
@@ -423,11 +412,11 @@ export class EscalationAgent {
    * Logar escalada em agent_logs
    */
   private async logEscalation(alert: EscalationAlert): Promise<void> {
-    await supabase
-      .from('agent_logs')
+    await (supabase
+      .from('agent_logs') as any)
       .insert({
-        ticketId: alert.ticketId,
-        agentType: 'escalation',
+        ticket_id: alert.ticket_id,
+        agent_type: 'escalation',
         action: 'escalated',
         input: {
           type: alert.type,
@@ -437,9 +426,9 @@ export class EscalationAgent {
           message: alert.message,
           metadata: alert.metadata
         },
-        toolsUsed: ['analyzeSentiment', 'detectKeywords', 'checkTimeout', 'checkRetryCount'],
+        tools_used: ['analyzeSentiment', 'detectKeywords', 'checkTimeout', 'checkRetryCount'],
         confidence: 1.0,
-        durationMs: 0
+        duration_ms: 0
       });
   }
 
@@ -455,20 +444,20 @@ export class EscalationAgent {
       // Buscar tickets similares nas últimas horas
       const timeWindow = new Date(Date.now() - ESCALATION_TRIGGERS.systemicBug.timeWindow);
 
-      const { data } = await supabase
-        .from('tickets')
+      const { data } = await (supabase
+        .from('tickets') as any)
         .select('id, intent')
         .in('status', ['novo', 'bot_ativo', 'em_atendimento'])
-        .gte('createdAt', timeWindow.toISOString())
+        .gte('created_at', timeWindow.toISOString())
         .ilike('intent', `%${errorMessage}%`);
 
-      const similarTickets = data?.length || 0;
+      const similarTickets = (data as any)?.length || 0;
       const isSystemic = similarTickets >= ESCALATION_TRIGGERS.systemicBug.sameErrorCount;
 
       return {
         isSystemic,
         similarTickets,
-        ticketIds: data?.map(t => t.id) || []
+        ticketIds: (data as any)?.map((t: any) => t.id) || []
       };
     } catch (error) {
       console.error('❌ Erro ao detectar bug sistêmico:', error);

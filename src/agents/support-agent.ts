@@ -24,8 +24,8 @@ export interface SupportAgentOutput {
 }
 
 export interface SupportAgentContext {
-  ticketId: string;
-  customerId: string;
+  ticket_id: string;
+  customer_id: string;
   sector: 'suporte';
   intent: string;
   conversationHistory: Array<{
@@ -38,8 +38,8 @@ export interface SupportAgentContext {
     name?: string;
     plan?: 'basico' | 'premium' | 'enterprise';
     isActive: boolean;
-    guruSubscriptionId?: string;
-    asaasCustomerId?: string;
+    guru_subscription_id?: string;
+    asaas_customer_id?: string;
   };
 }
 
@@ -109,7 +109,7 @@ export class SupportAgent {
       }
 
       // Verificar retry count
-      const retries = this.retryCount.get(context.ticketId) || 0;
+      const retries = this.retryCount.get(context.ticket_id) || 0;
       if (retries >= 3) {
         return {
           response: 'Vou transferir você para um de nossos especialistas humanos que poderá ajudar melhor.',
@@ -143,7 +143,7 @@ export class SupportAgent {
     
     prompt += `<HORA_ATUAL>: ${now}\n`;
     prompt += `CONTEXTO DO ATENDIMENTO:\n`;
-    prompt += `- Ticket: ${context.ticketId}\n`;
+    prompt += `- Ticket: ${context.ticket_id}\n`;
     prompt += `- Cliente: ${context.customerProfile.name || 'Não informado'}\n`;
     prompt += `- Plano: ${context.customerProfile.plan || 'Não informado'}\n`;
     prompt += `- Status: ${context.customerProfile.isActive ? 'Ativo' : 'Inativo'}\n`;
@@ -261,8 +261,8 @@ export class SupportAgent {
   }> {
     try {
       // Buscar dados do cliente no Supabase
-      const { data: customer } = await supabase
-        .from('customers')
+      const { data: customer } = await (supabase
+        .from('customers') as any)
         .select('guru_subscription_id, asaas_customer_id')
         .eq('id', customerId)
         .single();
@@ -312,7 +312,7 @@ export class SupportAgent {
       'enterprise': 'enterprise',
       'corp': 'enterprise'
     };
-    return mapping[planType?.toLowerCase()] || 'basico';
+    return (planType ? mapping[planType.toLowerCase()] : undefined) || 'basico';
   }
 
   /**

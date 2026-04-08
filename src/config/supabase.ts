@@ -2,97 +2,175 @@
  * Cliente Supabase
  * 
  * Configuração centralizada do Supabase para toda a aplicação PAA.
+ * Inclui timeouts para prevenir queries travadas.
  * 
  * @see https://supabase.com/docs/reference/javascript
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { logger } from '../utils/logger';
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       customers: {
         Row: {
           id: string;
           channel: 'whatsapp' | 'telegram' | 'web';
-          channelUserId: string;
+          channel_user_id: string;
           name: string | null;
           email: string | null;
           phone: string | null;
-          guruSubscriptionId: string | null;
-          asaasCustomerId: string | null;
-          createdAt: string;
-          updatedAt: string;
+          guru_subscription_id: string | null;
+          asaas_customer_id: string | null;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           channel: 'whatsapp' | 'telegram' | 'web';
-          channelUserId: string;
+          channel_user_id: string;
           name?: string | null;
           email?: string | null;
           phone?: string | null;
-          guruSubscriptionId?: string | null;
-          asaasCustomerId?: string | null;
+          guru_subscription_id?: string | null;
+          asaas_customer_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          channel?: 'whatsapp' | 'telegram' | 'web';
+          channel_user_id?: string;
+          name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          guru_subscription_id?: string | null;
+          asaas_customer_id?: string | null;
+          updated_at?: string;
         };
       };
       tickets: {
         Row: {
           id: string;
-          customerId: string | null;
+          customer_id: string | null;
           channel: 'whatsapp' | 'telegram' | 'web';
           sector: 'suporte' | 'financeiro' | 'comercial' | null;
           intent: string | null;
           status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido';
           priority: 'critica' | 'alta' | 'media' | 'baixa';
-          currentAgent: string | null;
-          assignedTo: string | null;
-          csatScore: number | null;
-          routerConfidence: number | null;
-          createdAt: string;
-          resolvedAt: string | null;
+          current_agent: string | null;
+          assigned_to: string | null;
+          csat_score: number | null;
+          router_confidence: number | null;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          customer_id?: string | null;
+          channel: 'whatsapp' | 'telegram' | 'web';
+          sector?: 'suporte' | 'financeiro' | 'comercial' | null;
+          intent?: string | null;
+          status?: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido';
+          priority?: 'critica' | 'alta' | 'media' | 'baixa';
+          current_agent?: string | null;
+          assigned_to?: string | null;
+          csat_score?: number | null;
+          router_confidence?: number | null;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: {
+          customer_id?: string | null;
+          sector?: 'suporte' | 'financeiro' | 'comercial' | null;
+          intent?: string | null;
+          status?: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido';
+          priority?: 'critica' | 'alta' | 'media' | 'baixa';
+          current_agent?: string | null;
+          assigned_to?: string | null;
+          csat_score?: number | null;
+          resolved_at?: string | null;
         };
       };
       messages: {
         Row: {
           id: string;
-          externalId: string;
+          external_id: string;
           channel: 'whatsapp' | 'telegram' | 'web';
-          customerId: string | null;
-          ticketId: string | null;
+          customer_id: string | null;
+          ticket_id: string | null;
           body: string;
-          mediaUrl: string | null;
-          mediaType: 'audio' | 'image' | 'document' | 'video' | null;
+          media_url: string | null;
+          media_type: 'audio' | 'image' | 'document' | 'video' | null;
           sender: 'customer' | 'bot' | 'human';
-          senderId: string | null;
+          sender_id: string | null;
           timestamp: string;
-          rawPayload: any | null;
+          raw_payload: any | null;
+        };
+        Insert: {
+          id?: string;
+          external_id: string;
+          channel: 'whatsapp' | 'telegram' | 'web';
+          customer_id?: string | null;
+          ticket_id?: string | null;
+          body: string;
+          media_url?: string | null;
+          media_type?: 'audio' | 'image' | 'document' | 'video' | null;
+          sender: 'customer' | 'bot' | 'human';
+          sender_id?: string | null;
+          timestamp?: string;
+          raw_payload?: any | null;
         };
       };
       agent_logs: {
         Row: {
           id: string;
-          ticketId: string | null;
-          agentType: 'router' | 'support' | 'finance' | 'sales' | 'escalation' | 'feedback';
+          ticket_id: string | null;
+          agent_type: 'router' | 'support' | 'finance' | 'sales' | 'escalation' | 'feedback';
           action: 'classified' | 'responded' | 'tool_call' | 'handoff' | 'escalated' | 'collected_feedback';
           input: any | null;
           output: any | null;
-          toolsUsed: string[] | null;
+          tools_used: string[] | null;
           confidence: number | null;
-          durationMs: number | null;
-          createdAt: string;
+          duration_ms: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id?: string | null;
+          agent_type: 'router' | 'support' | 'finance' | 'sales' | 'escalation' | 'feedback';
+          action: 'classified' | 'responded' | 'tool_call' | 'handoff' | 'escalated' | 'collected_feedback';
+          input?: any | null;
+          output?: any | null;
+          tools_used?: string[] | null;
+          confidence?: number | null;
+          duration_ms?: number | null;
+          created_at?: string;
         };
       };
       handoffs: {
         Row: {
           id: string;
-          ticketId: string | null;
-          fromAgent: string;
-          toAgent: string;
+          ticket_id: string | null;
+          from_agent: string;
+          to_agent: string;
           reason: string;
           urgency: 'low' | 'medium' | 'high' | 'critical' | null;
-          contextSnapshot: any | null;
-          toolResults: any | null;
-          createdAt: string;
+          context_snapshot: any | null;
+          tool_results: any | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id?: string | null;
+          from_agent: string;
+          to_agent: string;
+          reason: string;
+          urgency?: 'low' | 'medium' | 'high' | 'critical' | null;
+          context_snapshot?: any | null;
+          tool_results?: any | null;
+          created_at?: string;
         };
       };
       agents: {
@@ -101,77 +179,182 @@ export interface Database {
           name: string;
           email: string;
           sector: 'suporte' | 'financeiro' | 'comercial' | 'supervisor';
-          isOnline: boolean;
-          createdAt: string;
+          is_online: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          email: string;
+          sector: 'suporte' | 'financeiro' | 'comercial' | 'supervisor';
+          is_online?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+          email?: string;
+          sector?: 'suporte' | 'financeiro' | 'comercial' | 'supervisor';
+          is_online?: boolean;
         };
       };
       alerts: {
         Row: {
           id: string;
-          ticketId: string | null;
-          type: 'escalation' | 'timeout' | 'bug_sistemico';
-          level: 'info' | 'warning' | 'critical';
+          ticket_id: string | null;
+          type: string;
+          level: 'low' | 'medium' | 'high' | 'critical';
           message: string;
           acknowledged: boolean;
-          acknowledgedBy: string | null;
-          createdAt: string;
+          acknowledged_by?: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id?: string | null;
+          type: string;
+          level: 'low' | 'medium' | 'high' | 'critical';
+          message: string;
+          acknowledged?: boolean;
+          acknowledged_by?: string | null;
+          created_at?: string;
+        };
+      };
+      feedback: {
+        Row: {
+          id: string;
+          ticket_id: string | null;
+          customer_id: string;
+          type: 'csat' | 'nps';
+          score: number;
+          comment: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id?: string | null;
+          customer_id: string;
+          type: 'csat' | 'nps';
+          score: number;
+          comment?: string | null;
+          created_at?: string;
+        };
+      };
+      nps_history: {
+        Row: {
+          id: string;
+          customer_id: string;
+          score: number;
+          classification: 'detractor' | 'passive' | 'promoter';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          score: number;
+          classification: 'detractor' | 'passive' | 'promoter';
+          created_at?: string;
+        };
+      };
+      kb_articles: {
+        Row: {
+          id: string;
+          title: string;
+          content: string;
+          url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content: string;
+          url?: string | null;
+          created_at?: string;
+        };
+      };
+      technical_tickets: {
+        Row: {
+          id: string;
+          customer_id: string;
+          ticket_id: string;
+          error: string;
+          steps_to_reproduce: string | null;
+          expected_behavior: string;
+          actual_behavior: string;
+          severity: 'low' | 'medium' | 'high' | 'critical';
+          status: string;
+          reported_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          ticket_id: string;
+          error: string;
+          steps_to_reproduce?: string | null;
+          expected_behavior: string;
+          actual_behavior: string;
+          severity: 'low' | 'medium' | 'high' | 'critical';
+          status?: string;
+          reported_at?: string;
         };
       };
     };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
   };
-}
+};
 
 // Singleton do cliente Supabase
-let supabaseInstance: SupabaseClient<Database> | null = null;
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 
 /**
- * Obter ou criar instância do cliente Supabase
- * 
- * @returns Instância do Supabase
+ * Obter ou criar instância do cliente Supabase com timeout nas queries
  */
-export function getSupabaseClient(): SupabaseClient<Database> {
+export function getSupabaseClient(): ReturnType<typeof createClient<Database>> {
   if (!supabaseInstance) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error(
-        'Supabase não configurado. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL no .env'
-      );
+      throw new Error('Supabase não configurado. Verifique SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
     }
 
-    console.log(`📡 [Supabase] Inicializando em: ${supabaseUrl}`);
-    console.log(`🔐 [Supabase] Tipo de chave: ${isServiceKey ? 'SERVICE_ROLE (Bypass RLS)' : 'ANON (Subject to RLS)'}`);
-
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: false
-      },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const options: any = {
+      auth: { persistSession: false },
       db: {
         schema: 'public'
       },
-      realtime: {
-        params: {
-          eventsPerSecond: 10
+      global: {
+        headers: {
+          'x-application-name': 'paa-api'
         }
       }
-    });
+    };
 
-    console.log('✅ Cliente Supabase pronto');
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseKey, options);
+
+    logger.info('✅ Supabase client inicializado');
   }
-
   return supabaseInstance;
 }
 
 /**
- * Cliente Supabase para uso direto (export named)
- * 
- * @example
- * import { supabase } from './config/supabase';
- * const { data } = await supabase.from('customers').select();
+ * Resetar instância do Supabase (útil para testes e reconexão)
  */
-export const supabase = getSupabaseClient();
+export function resetSupabaseClient(): void {
+  if (supabaseInstance) {
+    supabaseInstance.removeAllChannels();
+    supabaseInstance = null;
+    logger.info('🔄 Supabase client resetado');
+  }
+}
 
+export const supabase = getSupabaseClient();
 export default supabase;

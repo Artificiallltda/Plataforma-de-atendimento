@@ -1,136 +1,178 @@
-'use client'
+/**
+ * Hook useTickets - Gerenciamento de tickets com Realtime
+ * 
+ * Features:
+ * - Carregamento com filtros
+ * - Realtime com reconexão automática
+ * - Suporte a diferentes visões (setor/admin)
+ */
 
-import { useEffect, useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useSupabaseRealtime } from './use-supabase-realtime';
 
 export interface Ticket {
-  id: string
-  customer_id: string
-  channel: 'whatsapp' | 'telegram' | 'web'
-  sector: string | null
-  intent: string | null
-  status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido'
-  priority: 'critica' | 'alta' | 'media' | 'baixa'
-  current_agent: string | null
-  assigned_to: string | null
-  csat_score: number | null
-  router_confidence: number | null
-  created_at: string
-  resolved_at: string | null
+  id: string;
+  customer_id: string;
+  channel: 'whatsapp' | 'telegram' | 'web';
+  sector: string | null;
+  intent: string | null;
+  status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido';
+  priority: 'critica' | 'alta' | 'media' | 'baixa';
+  current_agent: string | null;
+  assigned_to: string | null;
+  csat_score: number | null;
+  router_confidence: number | null;
+  created_at: string;
+  resolved_at: string | null;
   customer?: {
-    name: string | null
-    phone: string | null
-  }
+    name: string | null;
+    phone: string | null;
+  };
 }
 
 interface UseTicketsProps {
-  sector?: string
-  status?: string
-  enabled?: boolean
+  sector?: string;
+  status?: string;
+  enabled?: boolean;
 }
 
-export function useTickets({ sector, status, enabled = true }: UseTicketsProps = {}) {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<any>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  
-  // Estabilizar a instância do Supabase para evitar loops de re-inscrição
-  const supabase = useMemo(() => createClient(), [])
+interface UseTicketsReturn {
+  tickets: Ticket[];
+  loading: boolean;
+  error: Error | null;
+  realtimeStatus: string;
+  reconnect: () => void;
+  refresh: () => Promise<void>;
+}
 
-  // Detectar quando a sessão está pronta para evitar Race Condition
+const QUERY_TIMEOUT = 8000; // 8 segundos
+const MIN_LOADING_TIME = 500; // 500ms para evitar flash
+
+export function useTickets({ sector, status, enabled = true }: UseTicketsProps = {}): UseTicketsReturn {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // useMemo para estabilizar a referência do cliente
+  const supabase = useMemo(() => createClient(), []);
+
+  // Verificar autenticação
   useEffect(() => {
-    // Verificar estado inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session)
-    })
+      setIsAuthenticated(!!session);
+    });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      const authed = !!session
-      setIsAuthenticated(authed)
-      console.log('🔐 [Auth] Estado de autenticação (Tickets):', event, authed)
-    })
-    
-    return () => authListener.subscription.unsubscribe()
-  }, [supabase])
+    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthenticated(!!session);
+    });
 
-  useEffect(() => {
-    // Aguarda a autenticação antes de tentar carregar ou subscrever
-    if (!enabled || !isAuthenticated) {
-      if (!isAuthenticated && !loading) setLoading(true)
-      return
-    }
+    return () => authListener.subscription.unsubscribe();
+  }, [supabase]);
 
-    let channel: RealtimeChannel | null = null
+  // Função de carregamento
+  const loadTickets = useCallback(async () => {
+    if (!isAuthenticated) return;
 
-    const loadTickets = async () => {
-      try {
-        setLoading(true)
-        
-        let query = supabase
-          .from('tickets')
-          .select(`
-            *,
-            customer:customers (
-              name,
-              phone
-            )
-          `)
+    try {
+      setLoading(true);
+      setError(null);
 
-        // NORMALIZAÇÃO DE FILTRO (VISIBILIDADE TOTAL PARA SUPERVISORES)
-        const normalizedSector = sector?.toLowerCase() || ''
-        const isAdmin = ['supervisor', 'geral', 'ceo', 'admin'].includes(normalizedSector)
+      const startTime = Date.now();
 
-        if (sector && !isAdmin) {
-          query = query.eq('sector', normalizedSector)
-        }
-        
-        if (status && status !== 'all') {
-          query = query.eq('status', status)
-        }
+      let query = supabase
+        .from('tickets')
+        .select(`
+          *,
+          customer:customers (
+            name,
+            phone
+          )
+        `);
 
-        const { data, error: fetchError } = await query
+      // Filtro por setor (visibilidade total para supervisores)
+      const normalizedSector = sector?.toLowerCase() || '';
+      const isAdmin = ['supervisor', 'geral', 'ceo', 'admin'].includes(normalizedSector);
 
-        if (fetchError) throw fetchError
-        
-        // Ordenação manual no JavaScript (Imune a erros de nome de coluna no banco)
-        const sortedData = (data || []).sort((a, b) => {
-          const dateA = new Date(a.created_at || a.createdAt || a.createdat || 0).getTime()
-          const dateB = new Date(b.created_at || b.createdAt || b.createdat || 0).getTime()
-          return dateB - dateA // Decrescente
-        })
-
-        setTickets(sortedData)
-        
-        // Garantir um tempo mínimo de loading para evitar o flash de "0 atendimentos"
-        await new Promise(resolve => setTimeout(resolve, 500))
-      } catch (err: any) {
-        console.error('Erro ao carregar tickets:', err)
-        setError(err)
-      } finally {
-        setLoading(false)
+      if (sector && !isAdmin) {
+        query = query.eq('sector', normalizedSector);
       }
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      // Timeout para query
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar tickets')), QUERY_TIMEOUT);
+      });
+
+      const queryPromise = query;
+      const { data, error: fetchError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as { data: unknown[] | null; error: Error | null };
+
+      if (fetchError) throw fetchError;
+
+      // Ordenação por data
+      const sortedData = (data || []).sort((a: unknown, b: unknown) => {
+        const ticketA = a as Record<string, string>;
+        const ticketB = b as Record<string, string>;
+        const dateA = new Date(ticketA.created_at || 0).getTime();
+        const dateB = new Date(ticketB.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+
+      setTickets(sortedData as Ticket[]);
+
+      // Garantir tempo mínimo de loading
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_LOADING_TIME) {
+        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME - elapsed));
+      }
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error('Erro desconhecido');
+      console.error('[useTickets] Erro:', errorObj.message);
+      setError(errorObj);
+    } finally {
+      setLoading(false);
     }
+  }, [sector, status, isAuthenticated, supabase]);
 
-    if (enabled) {
-      loadTickets()
-
-      channel = supabase
-        .channel('tickets-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, (payload) => {
-          console.log('🔔 [Realtime] Mudança detectada em tickets:', payload.eventType)
-          loadTickets()
-        })
-        .subscribe((status) => {
-          console.log('📡 [Realtime] Status da subscrição de tickets:', status)
-        })
+  // Carregar na montagem
+  useEffect(() => {
+    if (enabled && isAuthenticated) {
+      loadTickets();
     }
+  }, [enabled, isAuthenticated, loadTickets]);
 
-    return () => {
-      if (channel) supabase.removeChannel(channel)
-    }
-  }, [sector, status, enabled, isAuthenticated]) // isAuthenticated adicionado às dependências
+  // Handler para mudanças no realtime
+  const handleTicketChange = useCallback(() => {
+    // Recarregar tickets quando houver mudança
+    loadTickets();
+  }, [loadTickets]);
 
-  return { tickets, loading, error }
+  // Usar hook de realtime
+  const { status: realtimeStatus, reconnect } = useSupabaseRealtime({
+    channelName: 'tickets-realtime',
+    table: 'tickets',
+    event: '*',
+    enabled: enabled && isAuthenticated,
+    onData: handleTicketChange
+  });
+
+  return {
+    tickets,
+    loading,
+    error,
+    realtimeStatus,
+    reconnect,
+    refresh: loadTickets
+  };
 }
+
+export default useTickets;

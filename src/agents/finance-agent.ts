@@ -25,8 +25,8 @@ export interface FinanceAgentOutput {
 }
 
 export interface FinanceAgentContext {
-  ticketId: string;
-  customerId: string;
+  ticket_id: string;
+  customer_id: string;
   sector: 'financeiro';
   intent: string;
   conversationHistory: Array<{
@@ -40,8 +40,8 @@ export interface FinanceAgentContext {
     email?: string;
     phone?: string;
     plan?: 'basico' | 'premium' | 'enterprise';
-    guruSubscriptionId?: string;
-    asaasCustomerId?: string;
+    guru_subscription_id?: string;
+    asaas_customer_id?: string;
   };
 }
 
@@ -153,7 +153,7 @@ export class FinanceAgent {
     
     prompt += `<HORA_ATUAL>: ${now}\n`;
     prompt += `CONTEXTO DO ATENDIMENTO:\n`;
-    prompt += `- Ticket: ${context.ticketId}\n`;
+    prompt += `- Ticket: ${context.ticket_id}\n`;
     prompt += `- Cliente: ${context.customerProfile.name || 'Não informado'}\n`;
     prompt += `- Plano: ${context.customerProfile.plan || 'Não informado'}\n`;
     prompt += `- Intenção: ${context.intent}\n\n`;
@@ -233,7 +233,7 @@ export class FinanceAgent {
       }
 
       // Verificar se é 2ª solicitação de estorno
-      const refundCount = this.refundRequestCount.get(context.customerId) || 0;
+      const refundCount = this.refundRequestCount.get(context.customer_id) || 0;
       if (refundCount >= 1) {
         return {
           shouldEscalate: true,
@@ -243,7 +243,7 @@ export class FinanceAgent {
       }
 
       // Incrementar contador de reembolsos
-      this.refundRequestCount.set(context.customerId, refundCount + 1);
+      this.refundRequestCount.set(context.customer_id, refundCount + 1);
     }
 
     // 2. Verificar palavras-chave de crise financeira
@@ -289,8 +289,8 @@ export class FinanceAgent {
   }> {
     try {
       // Buscar dados do cliente para obter asaasCustomerId
-      const { data: customer } = await supabase
-        .from('customers')
+      const { data: customer } = await (supabase
+        .from('customers') as any)
         .select('asaas_customer_id')
         .eq('id', customerId)
         .single();
@@ -394,8 +394,8 @@ export class FinanceAgent {
   }> {
     try {
       // Buscar dados do cliente para obter guruSubscriptionId
-      const { data: customer } = await supabase
-        .from('customers')
+      const { data: customer } = await (supabase
+        .from('customers') as any)
         .select('guru_subscription_id')
         .eq('id', customerId)
         .single();
@@ -464,8 +464,8 @@ export class FinanceAgent {
       }
 
       // Buscar dados do cliente para obter guruSubscriptionId
-      const { data: customer } = await supabase
-        .from('customers')
+      const { data: customer } = await (supabase
+        .from('customers') as any)
         .select('guru_subscription_id')
         .eq('id', customerId)
         .single();

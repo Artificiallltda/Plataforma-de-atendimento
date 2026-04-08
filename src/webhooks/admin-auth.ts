@@ -25,15 +25,15 @@ export async function registerAdminAuthRoutes(fastify: FastifyInstance) {
       });
 
       if (authError) {
-        fastify.log.error('Erro no Supabase Auth Admin:', authError);
+        fastify.log.error(authError, 'Erro no Supabase Auth Admin:');
         return reply.status(400).send({ error: authError.message });
       }
 
       const userId = authData.user.id;
 
       // 2. Criar registro na tabela public.agents (SNAKE_CASE)
-      const { error: dbError } = await supabase
-        .from('agents')
+      const { error: dbError } = await (supabase
+        .from('agents') as any)
         .insert({
           id: userId,
           name,
@@ -43,7 +43,7 @@ export async function registerAdminAuthRoutes(fastify: FastifyInstance) {
         });
 
       if (dbError) {
-        fastify.log.error('Erro ao inserir na tabela agents:', dbError);
+        fastify.log.error(dbError, 'Erro ao inserir na tabela agents:');
         // Tentar remover o usuário do Auth se o DB falhar para manter consistência
         await supabase.auth.admin.deleteUser(userId);
         return reply.status(400).send({ error: dbError.message });
@@ -55,7 +55,7 @@ export async function registerAdminAuthRoutes(fastify: FastifyInstance) {
       });
 
     } catch (err: any) {
-      fastify.log.error('Erro interno no registro de admin:', err);
+      fastify.log.error(err, 'Erro interno no registro de admin:');
       return reply.status(500).send({ error: 'Erro interno ao processar registro' });
     }
   });

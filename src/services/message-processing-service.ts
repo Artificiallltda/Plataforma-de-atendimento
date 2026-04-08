@@ -33,20 +33,25 @@ export async function processIncomingMessage(message: {
     });
     
     // Buscar as últimas 15 mensagens para dar memória profunda à IA
-    const { data: historyData } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('ticket_id', message.ticket_id)
-      .order('timestamp', { ascending: true })
-      .limit(15);
+    let history: { sender: 'customer' | 'bot' | 'human'; body: string; timestamp: Date }[] = [];
+    
+    if (message.ticket_id) {
+      const { data: historyData } = await (supabase
+        .from('messages') as any)
+        .select('*')
+        .eq('ticket_id', message.ticket_id)
+        .order('timestamp', { ascending: true })
+        .limit(15);
 
-    const history = (historyData || []).map(m => ({
-      sender: m.sender as 'customer' | 'bot' | 'human',
-      body: m.body,
-      timestamp: new Date(m.timestamp)
-    }));
-
-    console.log('📜 [MPS] Histórico carregado:', { ticketId: message.ticket_id, count: history.length });
+      history = (historyData || []).map((m: any) => ({
+        sender: m.sender as 'customer' | 'bot' | 'human',
+        body: m.body,
+        timestamp: new Date(m.timestamp)
+      }));
+      console.log('📜 [MPS] Histórico carregado:', { ticketId: message.ticket_id, count: history.length });
+    } else {
+      console.log('📜 [MPS] Sem ticket_id, pulando histórico');
+    }
 
     // 2. Classificação Cognitiva (Router)
     // Se o ticket já tem um setor, o Router apenas valida se houve mudança de intenção
@@ -128,7 +133,11 @@ export async function processIncomingMessage(message: {
     }
 
     // 3d. Garantir ativação automática APENAS se o ticket for novo ou bot_ativo
-    const { data: currentStatus, error: statusQueryError } = await supabase.from('tickets').select('status').eq('id', finalTicketId).single();
+    const { data: currentStatus, error: statusQueryError } = await supabase
+      .from('tickets')
+      .select('status')
+      .eq('id', finalTicketId as string)
+      .single();
     
     if (statusQueryError) {
       console.warn('⚠️ [MPS] Erro ao buscar status do ticket (prosseguindo sem silenciar bot):', {
@@ -147,17 +156,17 @@ export async function processIncomingMessage(message: {
     let needsHumanHandoff = false;
     
     const agentContext = {
-      ticketId: finalTicketId,
-      customerId: message.customer_id,
-      conversationHistory: history.concat([{ sender: 'customer', body: message.body, timestamp: new Date() }]),
-      customerProfile: customerContext?.customer || { id: message.customer_id, isActive: true },
+      ticket_id: finalTicketId,
+      customer_id: message.customer_id,
+      conversation_history: history.concat([{ sender: 'customer', body: message.body, timestamp: new Date() }]),
+      customer_profile: (customerContext as any)?.customer || { id: message.customer_id, is_active: true },
       sector: sector as any,
       intent: classification.intent
     };
 
     console.log(`🤖 [MPS] Delegando para agente '${sector}':`, {
-      ticketId: finalTicketId,
-      historyLength: agentContext.conversationHistory.length
+      ticket_id: finalTicketId,
+      history_length: agentContext.conversation_history.length
     });
 
     // Chamar o agente correto baseado na classificação fluida

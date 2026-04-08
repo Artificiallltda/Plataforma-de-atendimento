@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import { sendMessage, updateTicketStatus } from '@/hooks/use-messages'
 
 interface MessageInputProps {
-  ticketId: string
+  ticket_id: string
   customer_id: string
   channel: 'whatsapp' | 'telegram' | 'web'
-  senderId: string
+  sender_id: string
   onMessageSent?: () => void
   onStatusChange?: (status: string) => void
 }
@@ -19,10 +19,10 @@ const quickActions = [
 ]
 
 export function MessageInput({
-  ticketId,
+  ticket_id,
   customer_id,
   channel,
-  senderId,
+  sender_id,
   onMessageSent,
   onStatusChange
 }: MessageInputProps) {
@@ -51,8 +51,8 @@ export function MessageInput({
         setAgentName(formatted)
       }
     }
-    if (senderId) fetchAgent()
-  }, [senderId])
+    if (sender_id) fetchAgent()
+  }, [sender_id])
 
   const handleSend = async () => {
     if (!message.trim()) return
@@ -60,7 +60,7 @@ export function MessageInput({
     setSending(true)
     setError(null)
 
-    const result = await sendMessage(ticketId, customer_id, channel, message.trim(), senderId, agentName)
+    const result = await sendMessage(ticket_id, customer_id, channel, message.trim(), sender_id, agentName)
 
     if (result.success) {
       setMessage('')
@@ -74,9 +74,9 @@ export function MessageInput({
 
   const handleQuickAction = async (action: string, value: string) => {
     if (action === 'priority') {
-      await updateTicketStatus(ticketId, 'em_atendimento', value as any)
+      await updateTicketStatus(ticket_id, 'em_atendimento', value as any)
     } else {
-      await updateTicketStatus(ticketId, value as any)
+      await updateTicketStatus(ticket_id, value as any)
     }
     onStatusChange?.(value)
   }

@@ -4,7 +4,7 @@
  * Persistência de mensagens no Supabase.
  */
 
-import { getSupabaseClient } from '../config/supabase';
+import { getSupabaseClient, Database } from '../config/supabase';
 
 const supabase = getSupabaseClient();
 
@@ -50,13 +50,17 @@ export async function saveMessage(message: MessageInput): Promise<{ id: string; 
       return { id: '', success: false, error: error.message };
     }
 
+    if (!data) {
+      return { id: '', success: false, error: 'Erro inesperado: dados não retornados' };
+    }
+
     return { id: data.id, success: true };
   } catch (error: any) {
     console.error('❌ [MessageRepo] Exceção ao salvar mensagem:', {
       error: error.message,
       stack: error.stack,
       channel: message.channel,
-      customerId: message.customer_id
+      customer_id: message.customer_id
     });
     return { id: '', success: false, error: error.message };
   }

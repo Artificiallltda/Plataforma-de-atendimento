@@ -27,8 +27,8 @@ export interface SalesAgentOutput {
 }
 
 export interface SalesAgentContext {
-  ticketId: string;
-  customerId: string;
+  ticket_id: string;
+  customer_id: string;
   sector: 'comercial';
   intent: string;
   conversationHistory: Array<{
@@ -167,7 +167,7 @@ export class SalesAgent {
       }
 
       // Incrementar contador de interações
-      this.incrementInteractionCount(context.customerId);
+      this.incrementInteractionCount(context.customer_id);
 
       return parsed;
     } catch (error) {
@@ -193,7 +193,7 @@ export class SalesAgent {
     prompt += `<HORA_ATUAL>: ${now}\n`;
     prompt += `CONTEXTO DO LEAD:\n`;
 
-    prompt += `- Ticket: ${context.ticketId}\n`;
+    prompt += `- Ticket: ${context.ticket_id}\n`;
     prompt += `- Lead: ${context.customerProfile.name || 'Não informado'}\n`;
     prompt += `- Email: ${context.customerProfile.email || 'Não informado'}\n`;
     prompt += `- Telefone: ${context.customerProfile.phone || 'Não informado'}\n`;
@@ -300,7 +300,7 @@ export class SalesAgent {
     }
 
     // 2. 3+ interações sem conversão
-    const interactionCount = this.interactionCount.get(context.customerId) || 0;
+    const interactionCount = this.interactionCount.get(context.customer_id) || 0;
     if (interactionCount >= SALES_CONFIG.maxInteractionsWithoutConversion) {
       return {
         shouldEscalate: true,
@@ -377,9 +377,9 @@ export class SalesAgent {
   }> {
     try {
       // Buscar lead no Supabase (tabela leads ou customers)
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('name, email, phone, guru_subscription_id, asaas_customer_id')
+      const { data: customer } = await (supabase
+        .from('customers') as any)
+        .select('id, name, email, phone, guru_subscription_id, asaas_customer_id')
         .eq('phone', phone)
         .single();
 
@@ -391,15 +391,15 @@ export class SalesAgent {
       }
 
       // Contar interações anteriores (tickets)
-      const { count } = await supabase
-        .from('tickets')
+      const { count } = await (supabase
+        .from('tickets') as any)
         .select('*', { count: 'exact', head: true })
-        .eq('customer_id', customer.id)
+        .eq('customer_id', (customer as any).id)
         .eq('sector', 'comercial');
 
       return {
-        name: customer.name || undefined,
-        email: customer.email || undefined,
+        name: (customer as any).name || undefined,
+        email: (customer as any).email || undefined,
         previousInteractions: count || 0,
         status: count === 0 ? 'new' : 'contacted'
       };

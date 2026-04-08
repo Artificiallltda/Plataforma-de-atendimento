@@ -129,8 +129,8 @@ export async function whatsappWebhookPost(
 
         for (const msg of result.messages) {
           console.log('  - Mensagem:', {
-            externalId: msg.external_id,
-            customerId: msg.customer_id,
+            external_id: msg.external_id,
+            customer_id: msg.customer_id,
             body: msg.body.substring(0, 50) + (msg.body.length > 50 ? '...' : '')
           });
         }
@@ -139,7 +139,7 @@ export async function whatsappWebhookPost(
 
         for (const status of event.statuses || []) {
           console.log('  - Status:', {
-            externalId: status.externalId,
+            external_id: status.externalId,
             status: status.status,
             error: status.error?.title
           });

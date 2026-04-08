@@ -134,15 +134,15 @@ export async function getKnowledgeBase(query: string): Promise<Array<{
  * @returns Resultado da criação
  */
 export async function createTechnicalTicket(details: {
-  customerId: string;
-  ticketId: string;
+  customer_id: string;
+  ticket_id: string;
   error: string;
-  stepsToReproduce?: string[];
-  expectedBehavior: string;
-  actualBehavior: string;
+  steps_to_reproduce?: string[];
+  expected_behavior: string;
+  actual_behavior: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
 }): Promise<{
-  ticketId: string;
+  ticket_id: string;
   success: boolean;
   error?: string;
 }> {
@@ -150,12 +150,12 @@ export async function createTechnicalTicket(details: {
     const { data, error } = await (supabase
       .from('technical_tickets') as any)
       .insert({
-        customer_id: details.customerId,
-        ticket_id: details.ticketId,
+        customer_id: details.customer_id,
+        ticket_id: details.ticket_id,
         error: details.error,
-        steps_to_reproduce: details.stepsToReproduce ? JSON.stringify(details.stepsToReproduce) : null,
-        expected_behavior: details.expectedBehavior,
-        actual_behavior: details.actualBehavior,
+        steps_to_reproduce: details.steps_to_reproduce ? JSON.stringify(details.steps_to_reproduce) : null,
+        expected_behavior: details.expected_behavior,
+        actual_behavior: details.actual_behavior,
         severity: details.severity,
         status: 'aberto',
         reported_at: new Date().toISOString()
@@ -166,7 +166,7 @@ export async function createTechnicalTicket(details: {
     if (error) {
       console.error('❌ Erro ao criar ticket técnico:', error);
       return {
-        ticketId: '',
+        ticket_id: '',
         success: false,
         error: error.message
       };
@@ -174,19 +174,19 @@ export async function createTechnicalTicket(details: {
 
     // Notificar equipe de desenvolvimento (placeholder)
     await notifyDevTeam({
-      ticketId: data.id,
+      ticket_id: data.id,
       severity: details.severity,
       error: details.error
     });
 
     return {
-      ticketId: data.id,
+      ticket_id: data.id,
       success: true
     };
   } catch (error) {
     console.error('❌ Exceção em createTechnicalTicket:', error);
     return {
-      ticketId: '',
+      ticket_id: '',
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     };
@@ -223,14 +223,14 @@ function mapPlan(planType?: string): 'basico' | 'premium' | 'enterprise' {
     'enterprise': 'enterprise',
     'corp': 'enterprise'
   };
-  return mapping[planType?.toLowerCase()] || 'basico';
+  return (planType ? mapping[planType.toLowerCase()] : undefined) || 'basico';
 }
 
 /**
  * Notificar equipe de desenvolvimento
  */
 async function notifyDevTeam(notification: {
-  ticketId: string;
+  ticket_id: string;
   severity: string;
   error: string;
 }): Promise<void> {

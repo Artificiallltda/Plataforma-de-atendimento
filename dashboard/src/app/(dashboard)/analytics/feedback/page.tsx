@@ -189,7 +189,7 @@ export default function FeedbackAnalyticsPage() {
                 <div key={c.id} className="p-4 bg-red-50 rounded-lg border border-red-100">
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-bold text-red-700">{c.score} ⭐</span>
-                    <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-sm text-gray-700 italic">"{c.comment}"</p>
                 </div>
@@ -208,7 +208,7 @@ export default function FeedbackAnalyticsPage() {
                 <div key={c.id} className="p-4 bg-orange-50 rounded-lg border border-orange-100">
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-bold text-orange-700">Nota: {c.score}</span>
-                    <span className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-sm text-gray-700 italic">"{c.comment}"</p>
                 </div>

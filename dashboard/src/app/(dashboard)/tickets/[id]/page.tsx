@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Inbox } from '@/components/inbox/Inbox'
@@ -11,8 +11,8 @@ export default function TicketDetailPage() {
   const router = useRouter()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState('')
-  const supabase = createClient()
+  const [user_id, setUserId] = useState('')
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     let channel: any = null;
@@ -20,7 +20,6 @@ export default function TicketDetailPage() {
     const loadData = async () => {
       const ticketId = params.id as string
 
-      // BUSCAR TICKET COM FALLBACK DE IDS (customer_id vs customerId)
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select(`
@@ -39,11 +38,9 @@ export default function TicketDetailPage() {
         return
       }
 
-      // NORMALIZAÇÃO DE ID PARA O FRONTEND
-      let customerId = ticketData.customer_id || (ticketData as any).customerId;
-      
-      // BUSCA DE EMERGÊNCIA E AUTO-CORREÇÃO
-      if (!customerId) {
+      let customer_id = ticketData.customer_id
+
+      if (!customer_id) {
         console.log('⚠️ [TicketPage] ID do cliente em falta. Iniciando auto-correção...');
         const { data: lastMsg } = await supabase
           .from('messages')
@@ -54,18 +51,17 @@ export default function TicketDetailPage() {
         
         if (lastMsg?.customer_id) {
           console.log('✅ [TicketPage] ID recuperado! Atualizando banco de dados...');
-          customerId = lastMsg.customer_id;
+          customer_id = lastMsg.customer_id;
           
-          // CORREÇÃO NO BANCO: Salvar o ID no ticket para nunca mais dar erro
-          await supabase.from('tickets').update({ customer_id: customerId } as any).eq('id', ticketId);
+          await supabase.from('tickets').update({ customer_id } as any).eq('id', ticketId);
         }
       }
 
-      console.log('🔍 DEBUG TICKET:', ticketData.id, customerId);
+      console.log('🔍 DEBUG TICKET:', ticketData.id, customer_id);
 
       const normalizedTicket = {
         ...ticketData,
-        customer_id: customerId
+        customer_id
       }
 
       setTicket(normalizedTicket)
@@ -89,7 +85,7 @@ export default function TicketDetailPage() {
           setTicket(prev => ({ 
             ...prev, 
             ...payload.new,
-            customer_id: payload.new.customer_id || (payload.new as any).customerId 
+            customer_id: payload.new.customer_id
           }) as any);
         })
         .subscribe()
@@ -129,5 +125,5 @@ export default function TicketDetailPage() {
     )
   }
 
-  return <Inbox ticket={ticket} senderId={userId} onBack={() => router.push('/dashboard')} />
+  return <Inbox ticket={ticket} sender_id={user_id} onBack={() => router.push('/dashboard')} />
 }

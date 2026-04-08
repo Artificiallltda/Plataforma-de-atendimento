@@ -1,226 +1,221 @@
-'use client'
+/**
+ * Hook useMessages - Gerenciamento de mensagens com Realtime
+ * 
+ * Features:
+ * - Carregamento inicial com timeout
+ * - Realtime com reconexão automática
+ * - Tratamento de erros robusto
+ */
 
-import { useEffect, useState, useRef, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useSupabaseRealtime } from './use-supabase-realtime';
 
 export interface Message {
-  id: string
-  ticket_id: string
-  customer_id: string
-  channel: 'whatsapp' | 'telegram' | 'web'
-  body: string
-  media_url: string | null
-  media_type: 'audio' | 'image' | 'document' | 'video' | null
-  sender: 'customer' | 'bot' | 'human'
-  sender_id: string | null
-  timestamp: string
-  raw_payload: any | null
+  id: string;
+  ticket_id: string;
+  customer_id: string;
+  channel: 'whatsapp' | 'telegram' | 'web';
+  body: string;
+  media_url: string | null;
+  media_type: 'audio' | 'image' | 'document' | 'video' | null;
+  sender: 'customer' | 'bot' | 'human';
+  sender_id: string | null;
+  timestamp: string;
+  raw_payload: unknown | null;
   agent?: {
-    name: string
-    sector: string
-  }
+    name: string;
+    sector: string;
+  };
 }
 
 interface UseMessagesOptions {
-  ticketId: string
-  customer_id: string
-  enabled?: boolean
+  ticket_id: string;
+  customer_id: string;
+  enabled?: boolean;
 }
 
-export function useMessages(options: UseMessagesOptions) {
-  const { ticketId, customer_id, enabled = true } = options
-  const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  
-  // Estabilizar a referência do cliente Supabase para evitar loops
-  const supabase = useMemo(() => createClient(), [])
-  const channelRef = useRef<RealtimeChannel | null>(null)
+interface UseMessagesReturn {
+  messages: Message[];
+  loading: boolean;
+  error: string | null;
+  realtimeStatus: string;
+  reconnect: () => void;
+}
 
-  // Detectar quando a sessão está pronta para evitar Race Condition
+const QUERY_TIMEOUT = 5000; // 5 segundos
+
+export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
+  const { ticket_id, customer_id, enabled = true } = options;
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // useMemo para estabilizar a referência do cliente
+  const supabase = useMemo(() => createClient(), []);
+
+  // Verificar autenticação
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session)
-    })
+      setIsAuthenticated(!!session);
+    });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      const authed = !!session
-      setIsAuthenticated(authed)
-      console.log('🔐 [Auth] Estado de autenticação (Messages):', event, authed)
-    })
-    
-    return () => authListener.subscription.unsubscribe()
-  }, [supabase])
+      setIsAuthenticated(!!session);
+    });
 
+    return () => authListener.subscription.unsubscribe();
+  }, [supabase]);
+
+  // Carregar mensagens iniciais
   useEffect(() => {
-    // Aguarda a autenticação antes de tentar carregar ou subscrever
-    if (!enabled || !isAuthenticated) {
-      if (!isAuthenticated && !loading) setLoading(true)
-      return
+    if (!enabled || !isAuthenticated || !customer_id) {
+      if (!isAuthenticated) setLoading(true);
+      return;
     }
-
-    let channel: RealtimeChannel | null = null
 
     const loadMessages = async () => {
       try {
-        // Trava de segurança: ignorar IDs inválidos ou texto 'null'
+        // Validar ID
         if (!customer_id || customer_id === 'null' || customer_id === 'undefined') {
-          console.log('⏭️ [useMessages] ID inválido ou nulo. Pulando carga.');
+          console.log('[useMessages] ID inválido, pulando carga');
           setLoading(false);
           return;
         }
 
-        console.log(`🔍 [useMessages] Carregando histórico para: ${customer_id}`);
-        setLoading(true)
-        
-        // Query simplificada ao máximo para matar o Erro 400
-        const { data, error } = await supabase
+        setLoading(true);
+        setError(null);
+
+        // Query com timeout
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout ao carregar mensagens')), QUERY_TIMEOUT);
+        });
+
+        const queryPromise = supabase
           .from('messages')
           .select('*')
           .eq('customer_id', customer_id)
+          .order('timestamp', { ascending: true });
 
-        if (error) throw error
+        const { data, error: queryError } = await Promise.race([
+          queryPromise,
+          timeoutPromise
+        ]) as { data: unknown[] | null; error: Error | null };
 
-        // Ordenação manual no JS para garantir estabilidade
-        const sortedMessages = (data || []).sort((a, b) => 
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        )
+        if (queryError) throw queryError;
 
-        console.log(`✅ [useMessages] ${sortedMessages.length} mensagens carregadas.`);
+        const mappedMessages = (data || []).map(m => {
+          const msg = m as Record<string, unknown>;
+          return msg as Message;
+        });
 
-        const mappedMessages = sortedMessages.map(m => ({
-          ...m,
-          customer_id: m.customer_id || (m as any).customerId,
-          ticket_id: m.ticket_id || (m as any).ticketId
-        }))
-
-        setMessages(mappedMessages as Message[])
-        setError(null)
-      } catch (err: any) {
-        console.error('❌ [useMessages] Erro fatal na carga:', err)
-        setError(err.message)
+        setMessages(mappedMessages);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+        console.error('[useMessages] Erro:', errorMessage);
+        setError(errorMessage);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadMessages()
+    loadMessages();
+  }, [ticket_id, customer_id, enabled, isAuthenticated, supabase]);
 
-    if (enabled && customer_id) {
-      console.log(`🔌 [Realtime] Conectando canal: chat-${customer_id}`);
+  // Handler para novas mensagens do realtime
+  const handleNewMessage = useCallback((payload: unknown) => {
+    const newPayload = payload as { new: Record<string, unknown> };
+    const newMessage = newPayload.new;
+    
+    const normalizedMsg = newMessage as Message;
 
-      channel = supabase
-        .channel(`chat-global-${customer_id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages'
-            // Filtro removido para maior robustez
-          },
-          (payload) => {
-            console.log('🔔 [Realtime] Nova mensagem detectada no banco!', payload.eventType);
-            
-            const newMessage = payload.new as any;
-            
-            // FILTRAGEM MANUAL NO JS: Muito mais resiliente a IDs e tipos
-            const msgCustomerId = newMessage.customer_id || newMessage.customerId;
-            if (msgCustomerId !== customer_id) {
-              console.log(`⏭️ [Realtime] Mensagem ignorada (Cliente ${msgCustomerId} != ${customer_id})`);
-              return;
-            }
+    setMessages(prev => {
+      // Evitar duplicatas
+      if (prev.some(m => m.id === normalizedMsg.id)) return prev;
+      return [...prev, normalizedMsg];
+    });
+  }, []);
 
-            const normalizedMsg: Message = {
-              ...newMessage,
-              customer_id: msgCustomerId,
-              ticket_id: newMessage.ticket_id || newMessage.ticketId
-            };
+  // Usar novo hook de realtime com reconexão
+  const { status: realtimeStatus, reconnect } = useSupabaseRealtime({
+    channelName: `chat-${customer_id}`,
+    table: 'messages',
+    filter: `customer_id=eq.${customer_id}`,
+    event: 'INSERT',
+    enabled: enabled && !!customer_id && isAuthenticated,
+    onData: handleNewMessage
+  });
 
-            setMessages(prev => {
-              if (prev.some(m => m.id === normalizedMsg.id)) return prev;
-              const newList = [...prev, normalizedMsg];
-              console.log(`📈 [Realtime] UI Atualizada com sucesso!`);
-              return newList;
-            });
-          }
-        )
-        .subscribe((status) => {
-          console.log(`📡 [Realtime] Status da conexão de mensagens: ${status}`);
-        })
-
-      channelRef.current = channel
-    }
-
-    return () => {
-      if (channel) {
-        console.log('🔌 [Realtime] Desconectando canal');
-        supabase.removeChannel(channel)
-      }
-    }
-  }, [ticketId, customer_id, enabled, isAuthenticated]) // isAuthenticated adicionado às dependências
-
-  return { messages, loading, error }
+  return {
+    messages,
+    loading,
+    error,
+    realtimeStatus,
+    reconnect
+  };
 }
 
 export async function sendMessage(
-  ticketId: string,
+  ticket_id: string,
   customer_id: string,
   channel: 'whatsapp' | 'telegram' | 'web',
   body: string,
-  senderId: string,
-  senderName: string
+  sender_id: string,
+  sender_name: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   try {
     const { error } = await supabase
       .from('messages')
       .insert({
-        ticket_id: ticketId,
+        ticket_id,
         customer_id: customer_id,
         channel,
         body,
         sender: 'human',
-        sender_id: senderId,
+        sender_id,
         external_id: `human-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        raw_payload: { agent_name: senderName } 
-      })
+        raw_payload: { agent_name: sender_name }
+      });
 
-    if (error) throw error
-    return { success: true }
-  } catch (err: any) {
-    console.error('Erro ao enviar mensagem:', err)
-    return { success: false, error: err.message }
+    if (error) throw error;
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('Erro ao enviar mensagem:', errorMessage);
+    return { success: false, error: errorMessage };
   }
 }
 
 export async function updateTicketStatus(
-  ticketId: string,
+  ticket_id: string,
   status: 'novo' | 'bot_ativo' | 'aguardando_humano' | 'em_atendimento' | 'resolvido',
   priority?: 'critica' | 'alta' | 'media' | 'baixa'
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   try {
-    const updateData: any = { status }
-    if (priority) updateData.priority = priority
+    const updateData: Record<string, unknown> = { status };
+    if (priority) updateData.priority = priority;
     if (status === 'resolvido') {
-      updateData.resolved_at = new Date().toISOString()
+      updateData.resolved_at = new Date().toISOString();
     }
 
     const { error } = await supabase
       .from('tickets')
       .update(updateData)
-      .eq('id', ticketId)
+      .eq('id', ticket_id);
 
-    if (error) throw error
-    return { success: true }
-  } catch (err: any) {
-    console.error('Erro ao atualizar status do ticket:', err)
-    return { success: false, error: err.message }
+    if (error) throw error;
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('Erro ao atualizar status:', errorMessage);
+    return { success: false, error: errorMessage };
   }
 }

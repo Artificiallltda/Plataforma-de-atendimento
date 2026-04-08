@@ -4,7 +4,7 @@
  * Persistência e identificação de clientes no Supabase.
  */
 
-import { getSupabaseClient } from '../config/supabase';
+import { getSupabaseClient, Database } from '../config/supabase';
 import { guruService } from '../integrations/guru-service';
 import { asaasService } from '../integrations/asaas-service';
 
@@ -38,13 +38,13 @@ export interface Customer {
  */
 export async function findCustomerByChannel(
   channel: string,
-  channelUserId: string
+  channel_user_id: string
 ): Promise<Customer | null> {
   const { data, error } = await supabase
     .from('customers')
     .select('*')
     .eq('channel', channel)
-    .eq('channel_user_id', channelUserId)
+    .eq('channel_user_id', channel_user_id)
     .single();
 
   if (error) {
@@ -60,8 +60,8 @@ export async function findCustomerByChannel(
  * Criar novo cliente
  */
 export async function createCustomer(customer: CustomerInput): Promise<Customer | null> {
-  const { data, error } = await supabase
-    .from('customers')
+  const { data, error } = await (supabase
+    .from('customers') as any)
     .insert({
       channel: customer.channel,
       channel_user_id: customer.channel_user_id,
@@ -87,10 +87,10 @@ export async function createCustomer(customer: CustomerInput): Promise<Customer 
  */
 export async function identifyOrCreateCustomer(
   channel: string,
-  channelUserId: string,
+  channel_user_id: string,
   name?: string
 ): Promise<Customer> {
-  let customer = await findCustomerByChannel(channel, channelUserId);
+  let customer = await findCustomerByChannel(channel, channel_user_id);
 
   if (customer) {
     console.log('✅ Cliente identificado:', customer.id);
@@ -106,7 +106,7 @@ export async function identifyOrCreateCustomer(
 
   customer = await createCustomer({
     channel: channel as 'whatsapp' | 'telegram' | 'web',
-    channel_user_id: channelUserId,
+    channel_user_id: channel_user_id,
     name
   });
 
@@ -119,7 +119,7 @@ export async function identifyOrCreateCustomer(
   }
 
   // Enriquecer dados (background)
-  enrichCustomerData(customer, channelUserId).catch(() => {});
+  enrichCustomerData(customer, channel_user_id).catch(() => {});
 
   return customer;
 }
@@ -127,9 +127,9 @@ export async function identifyOrCreateCustomer(
 /**
  * Enriquecer dados do cliente
  */
-async function enrichCustomerData(customer: Customer, channelUserId: string): Promise<void> {
+async function enrichCustomerData(customer: Customer, channel_user_id: string): Promise<void> {
   try {
-    const phone = channelUserId.startsWith('+') ? channelUserId : `+55${channelUserId}`;
+    const phone = channel_user_id.startsWith('+') ? channel_user_id : `+55${channel_user_id}`;
     
     const guruCustomer = await guruService.findCustomerByPhone(phone).catch(() => null);
     if (guruCustomer) {
@@ -148,21 +148,20 @@ async function enrichCustomerData(customer: Customer, channelUserId: string): Pr
 /**
  * Atualizar cliente
  */
-export async function updateCustomer(customerId: string, updates: any): Promise<Customer | null> {
-  // Fix: Convertendo para 'any' para evitar erros de tipagem do Supabase SDK
+export async function updateCustomer(customer_id: string, updates: Database['public']['Tables']['customers']['Update']): Promise<Customer | null> {
   const { data, error } = await (supabase
     .from('customers') as any)
     .update(updates)
-    .eq('id', customerId)
+    .eq('id', customer_id)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    console.error(`❌ Erro ao atualizar cliente ${customerId}:`, error)
-    return null
+    console.error(`❌ Erro ao atualizar cliente ${customer_id}:`, error);
+    return null;
   }
 
-  return data as Customer
+  return data as any; // Fazemos o cast para a interface local Customer que também usa snake_case
 }
 
 export default {

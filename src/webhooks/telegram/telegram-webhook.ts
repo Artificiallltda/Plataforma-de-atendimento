@@ -16,19 +16,19 @@ let telegramProvider: TelegramProvider | null = null;
  */
 async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvider) {
   console.log('📨 [Telegram] Processando mensagem:', {
-    userId: msg.userId,
+    user_id: msg.userId,
     text: msg.text?.substring(0, 50)
   });
 
   const result = await normalizeAndSaveGenericMessage(
     {
-      externalId: `${msg.userId}-${Date.now()}`,
+      external_id: `${msg.userId}-${Date.now()}`,
       from: msg.userId,
       name: msg.userName,
       body: msg.text,
-      mediaUrl: msg.imageUrl,
-      mediaType: msg.mediaType as any,
-      rawPayload: msg.rawPayload
+      media_url: msg.imageUrl,
+      media_type: msg.mediaType as any,
+      raw_payload: msg.rawPayload
     },
     'telegram'
   );
@@ -37,23 +37,23 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
     console.error('❌ [Telegram] normalizeAndSaveGenericMessage FALHOU:', {
       success: result.success,
       error: result.error,
-      userId: msg.userId,
+      user_id: msg.userId,
       text: msg.text?.substring(0, 80)
     });
     return;
   }
 
   console.log('✅ [Telegram] Mensagem normalizada e salva:', {
-    messageId: result.message.id,
-    customerId: result.message.customer_id,
-    ticketId: result.message.ticket_id ?? 'nenhum ainda'
+    message_id: result.message.id,
+    customer_id: result.message.customer_id,
+    ticket_id: result.message.ticket_id ?? 'nenhum ainda'
   });
 
   try {
     console.log('🔍 [Telegram] Iniciando processIncomingMessage:', {
-      messageId: result.message.id,
-      customerId: result.message.customer_id,
-      ticketId: result.message.ticket_id ?? 'nenhum ainda',
+      message_id: result.message.id,
+      customer_id: result.message.customer_id,
+      ticket_id: result.message.ticket_id ?? 'nenhum ainda',
       body: result.message.body?.substring(0, 80)
     });
 
@@ -66,9 +66,9 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
     });
 
     console.log('✅ [Telegram] processIncomingMessage concluído:', {
-      ticketId: processed.ticketId,
+      ticket_id: processed.ticketId,
       sector: processed.sector,
-      hasResponse: !!processed.clarificationMessage
+      has_response: !!processed.clarificationMessage
     });
 
     if (processed.clarificationMessage) {
@@ -83,7 +83,7 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
     console.error('❌ [Telegram] Erro no fluxo de IA:', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
-      userId: msg.userId
+      user_id: msg.userId
     });
   }
 }

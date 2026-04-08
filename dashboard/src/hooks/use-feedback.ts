@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export interface FeedbackData {
@@ -11,8 +11,8 @@ export interface FeedbackData {
   npsScore: number
   npsClassification: 'ruim' | 'bom' | 'muito_bom' | 'excelente'
   npsDistribution: { promoters: number; passives: number; detractors: number }
-  lowCsatComments: Array<{ id: string; score: number; comment: string; createdAt: string }>
-  detractorComments: Array<{ id: string; score: number; comment: string; createdAt: string }>
+  lowCsatComments: Array<{ id: string; score: number; comment: string; created_at: string }>
+  detractorComments: Array<{ id: string; score: number; comment: string; created_at: string }>
 }
 
 interface UseFeedbackOptions {
@@ -25,7 +25,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
   const { days = 30, sector, enabled = true } = options
   const [data, setData] = useState<FeedbackData | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,7 +80,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
               id: f.id,
               score: f.score,
               comment: f.comment,
-              createdAt: f.created_at
+              created_at: f.created_at
             })
           }
         })
@@ -120,7 +120,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
                 id: f.id,
                 score: f.score,
                 comment: f.comment,
-                createdAt: f.created_at
+                created_at: f.created_at
               })
             }
           }

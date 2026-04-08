@@ -10,20 +10,20 @@ export async function registerFeedbackTriggerRoutes(fastify: FastifyInstance) {
    * Dispara o envio de CSAT para um ticket resolvido
    */
   fastify.post('/api/feedback-trigger', async (request, reply) => {
-    const { ticketId } = request.body as any;
+    const { ticket_id } = request.body as any;
 
-    if (!ticketId) {
-      return reply.status(400).send({ error: 'ticketId é obrigatório' });
+    if (!ticket_id) {
+      return reply.status(400).send({ error: 'ticket_id é obrigatório' });
     }
 
     try {
-      fastify.log.info(`Disparando feedback para ticket: ${ticketId}`);
+      fastify.log.info(`Disparando feedback para ticket: ${ticket_id}`);
 
       // 1. Buscar dados do ticket para garantir que existe e obter customer_id/channel
       const { data, error: ticketError } = await supabase
         .from('tickets')
         .select('id, customer_id, channel, status')
-        .eq('id', ticketId)
+        .eq('id', ticket_id)
         .single();
 
       const ticket = data as any;

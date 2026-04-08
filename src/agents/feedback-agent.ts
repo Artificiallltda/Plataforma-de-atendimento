@@ -9,8 +9,11 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { supabase } from '../config/supabase';
+import { supabase, Database } from '../config/supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { escalationAgent } from './escalation-agent';
+
+const typedClient = supabase as unknown as SupabaseClient<Database>;
 
 export type FeedbackType = 'csat' | 'nps';
 export type NpsClassification = 'detractor' | 'passive' | 'promoter';
@@ -77,11 +80,11 @@ export class FeedbackAgent {
       // Buscar tickets resolvidos na janela
       const { data: tickets, error } = await supabase
         .from('tickets')
-        .select('id, customerId, channel')
+        .select('id, customer_id, channel')
         .eq('status', 'resolvido')
-        .gte('resolvedAt', targetTime.toISOString())
-        .lte('resolvedAt', targetTimeEnd.toISOString())
-        .not('csatScore', 'is', null); // Apenas tickets sem CSAT
+        .gte('resolved_at', targetTime.toISOString())
+        .lte('resolved_at', targetTimeEnd.toISOString())
+        .not('csat_score', 'is', null); // Apenas tickets sem CSAT
 
       if (error) {
         return {
@@ -95,7 +98,7 @@ export class FeedbackAgent {
 
       // Enviar CSAT para cada ticket
       for (const ticket of tickets || []) {
-        const result = await this.sendCsatSurvey(ticket.id, ticket.customerId, ticket.channel);
+        const result = await this.sendCsatSurvey((ticket as any).id, (ticket as any).customer_id, (ticket as any).channel);
         if (result.action === 'sent') {
           sentCount++;
         }
@@ -128,7 +131,7 @@ export class FeedbackAgent {
       const { data: existingFeedback } = await supabase
         .from('feedback')
         .select('id')
-        .eq('ticketId', ticketId)
+        .eq('ticket_id', ticketId)
         .eq('type', 'csat')
         .single();
 
@@ -180,16 +183,16 @@ export class FeedbackAgent {
       }
 
       // Registrar feedback no Supabase
-      const { error: feedbackError } = await supabase
+      const { error: feedbackError } = await typedClient
         .from('feedback')
         .insert({
-          ticketId,
-          customerId,
+          ticket_id: ticketId,
+          customer_id: customerId,
           type: 'csat',
           score,
           comment: comment || null,
-          createdAt: new Date().toISOString()
-        });
+          created_at: new Date().toISOString()
+        } as any);
 
       if (feedbackError) {
         console.error('❌ Erro ao registrar CSAT:', feedbackError);
@@ -200,9 +203,9 @@ export class FeedbackAgent {
       }
 
       // Atualizar ticket com CSAT
-      await supabase
+      await typedClient
         .from('tickets')
-        .update({ csatScore: score })
+        .update({ csat_score: score } as any)
         .eq('id', ticketId);
 
       // Verificar se precisa de escalada (CSAT baixo)
@@ -255,14 +258,29 @@ export class FeedbackAgent {
       npsLimitDate.setDate(npsLimitDate.getDate() - FEEDBACK_CONFIG.npsIntervalDays);
 
       // Buscar clientes que não receberam NPS há 30 dias
-      const { data: customers } = await supabase
-        .from('nps_history')
-        .select('customerId, MAX(createdAt) as lastNps')
-        .group('customerId')
-        .lt('lastNps', npsLimitDate.toISOString());
+      // Nota: Supabase JS não suporta .group() diretamente na query fluida.
+      // Vamos buscar o histórico recente e filtrar no código para maior estabilidade.
+      const { data: npsHistory } = await (supabase
+        .from('nps_history') as any)
+        .select('customer_id, created_at')
+        .order('created_at', { ascending: false });
 
-      // Se não houver histórico, buscar todos os clientes ativos
-      let eligibleCustomers = customers || [];
+      // Mapa para armazenar o último NPS de cada cliente
+      const lastNpsPerCustomer = new Map<string, Date>();
+      if (npsHistory) {
+        for (const record of (npsHistory as any[])) {
+          if (!lastNpsPerCustomer.has(record.customer_id)) {
+            lastNpsPerCustomer.set(record.customer_id, new Date(record.created_at));
+          }
+        }
+      }
+
+      // Filtrar clientes elegíveis (aqueles cujo último NPS foi há mais de npsIntervalDays)
+      const eligibleFromHistory = Array.from(lastNpsPerCustomer.entries())
+        .filter(([_, lastDate]) => lastDate < npsLimitDate)
+        .map(([customer_id]) => ({ customerId: customer_id }));
+
+      let eligibleCustomers = eligibleFromHistory;
       
       if (eligibleCustomers.length === 0) {
         // Buscar todos os clientes com tickets resolvidos
@@ -305,7 +323,7 @@ export class FeedbackAgent {
       // Buscar dados do cliente para envio
       const { data: customer } = await supabase
         .from('customers')
-        .select('id, channel, channelUserId')
+        .select('id, channel, channel_user_id')
         .eq('id', customerId)
         .single();
 
@@ -360,11 +378,11 @@ export class FeedbackAgent {
       const { error: feedbackError } = await supabase
         .from('feedback')
         .insert({
-          customerId,
+          customer_id: customerId,
           type: 'nps',
           score,
           comment: comment || null,
-          createdAt: new Date().toISOString()
+          created_at: new Date().toISOString()
         });
 
       if (feedbackError) {
@@ -379,10 +397,10 @@ export class FeedbackAgent {
       await supabase
         .from('nps_history')
         .insert({
-          customerId,
+          customer_id: customerId,
           score,
           classification,
-          createdAt: new Date().toISOString()
+          created_at: new Date().toISOString()
         });
 
       // Enviar agradecimento
@@ -434,12 +452,12 @@ export class FeedbackAgent {
       await supabase
         .from('alerts')
         .insert({
-          ticketId,
+          ticket_id: ticketId,
           type: 'low_csat',
           level: 'high',
           message: `CSAT baixo (${score}/5) - Necessária recuperação`,
           acknowledged: false,
-          createdAt: new Date().toISOString()
+          created_at: new Date().toISOString()
         });
 
       // Notificar via EscalationAgent
@@ -449,7 +467,7 @@ export class FeedbackAgent {
         type: 'sentiment',
         level: 'high',
         message: `Cliente avaliou atendimento com ${score}/5 estrelas`,
-        metadata: { csatScore: score },
+        metadata: { csat_score: score },
         timestamp: new Date()
       });
 
@@ -503,8 +521,8 @@ export class FeedbackAgent {
         .from('feedback')
         .select('score')
         .eq('type', 'csat')
-        .gte('createdAt', start.toISOString())
-        .lte('createdAt', end.toISOString());
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
 
       // Calcular média e distribuição de CSAT
       const csatDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -523,8 +541,8 @@ export class FeedbackAgent {
       const { data: npsHistory } = await supabase
         .from('nps_history')
         .select('score, classification')
-        .gte('createdAt', start.toISOString())
-        .lte('createdAt', end.toISOString());
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
 
       // Calcular NPS
       let promoters = 0;

@@ -15,19 +15,19 @@ import { z } from 'zod';
  */
 export const incomingMessageSchema = z.object({
   id: z.string().uuid('ID deve ser um UUID válido'),
-  externalId: z.string().min(1, 'externalId é obrigatório'),
+  external_id: z.string().min(1, 'external_id é obrigatório'),
   channel: z.enum(['whatsapp', 'telegram', 'web'], {
     errorMap: () => ({ message: 'Canal deve ser whatsapp, telegram ou web' })
   }),
-  customerId: z.string().uuid('customerId deve ser um UUID válido'),
-  ticketId: z.string().uuid().optional(),
+  customer_id: z.string().uuid('customer_id deve ser um UUID válido'),
+  ticket_id: z.string().uuid().optional(),
   body: z.string().max(4096, 'Mensagem muito longa (máx 4096 caracteres)'),
-  mediaUrl: z.string().url().optional().or(z.literal('')),
-  mediaType: z.enum(['audio', 'image', 'document', 'video']).optional(),
+  media_url: z.string().url().optional().or(z.literal('')),
+  media_type: z.enum(['audio', 'image', 'document', 'video']).optional(),
   sender: z.enum(['customer', 'bot', 'human']),
-  senderId: z.string().uuid().optional(),
+  sender_id: z.string().uuid().optional(),
   timestamp: z.date().or(z.string().transform(s => new Date(s))),
-  rawPayload: z.record(z.any()).optional()
+  raw_payload: z.record(z.any()).optional()
 });
 
 /**
@@ -39,14 +39,14 @@ export type IncomingMessage = z.infer<typeof incomingMessageSchema>;
  * Schema para validação de mensagens de entrada (webhook)
  */
 export const webhookMessageSchema = z.object({
-  externalId: z.string(),
+  external_id: z.string(),
   channel: z.enum(['whatsapp', 'telegram', 'web']),
   from: z.string(),
   body: z.string(),
-  mediaUrl: z.string().optional(),
-  mediaType: z.enum(['audio', 'image', 'document', 'video']).optional(),
+  media_url: z.string().optional(),
+  media_type: z.enum(['audio', 'image', 'document', 'video']).optional(),
   timestamp: z.date().or(z.string().transform(s => new Date(s))),
-  rawPayload: z.record(z.any())
+  raw_payload: z.record(z.any())
 });
 
 export type WebhookMessage = z.infer<typeof webhookMessageSchema>;
