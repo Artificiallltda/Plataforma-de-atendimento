@@ -22,6 +22,7 @@ const start = async () => {
     origin: [
       'http://localhost:3000',
       'http://localhost:3001',
+      'https://plataforma-de-atendimento-production.up.railway.app',
       'https://plataformadeatendimentoartificiall.up.railway.app',
       'https://artificiall.ai'
     ],

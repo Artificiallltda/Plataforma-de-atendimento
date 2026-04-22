@@ -212,6 +212,17 @@ export async function updateTicketStatus(
       .eq('id', ticket_id);
 
     if (error) throw error;
+
+    // Disparar pesquisa de satisfação automaticamente ao fechar ticket
+    if (status === 'resolvido') {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://plataforma-de-atendimento-production.up.railway.app';
+      fetch(`${apiUrl}/api/feedback-trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id })
+      }).catch(err => console.error('[Feedback] Erro ao disparar pesquisa:', err));
+    }
+
     return { success: true };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
