@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   )
 
-  // Rotas de auth (login/register)
+  // Rotas de auth (login/register/reset)
   const authPaths = ['/login', '/register', '/auth']
   const isAuthPath = authPaths.some(path => 
     request.nextUrl.pathname.startsWith(path)
