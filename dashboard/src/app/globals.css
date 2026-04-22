@@ -63,7 +63,14 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Custom Scrollbar */
+/* Smooth transitions for dark mode switch */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Custom Scrollbar - light */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -79,4 +86,13 @@ h1, h2, h3, h4, h5, h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Custom Scrollbar - dark */
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
