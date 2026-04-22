@@ -41,18 +41,26 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         // Buscar feedback CSAT
         let csatQuery = supabase
           .from('feedback')
-          .select('*')
+          .select('*, tickets!inner(sector)')
           .eq('type', 'csat')
           .gte('created_at', startDate.toISOString())
+
+        if (sector) {
+          csatQuery = csatQuery.eq('tickets.sector', sector)
+        }
 
         const { data: csatDataRaw } = await csatQuery
 
         // Buscar feedback NPS
         let npsQuery = supabase
           .from('feedback')
-          .select('*')
+          .select('*, tickets!inner(sector)')
           .eq('type', 'nps')
           .gte('created_at', startDate.toISOString())
+
+        if (sector) {
+          npsQuery = npsQuery.eq('tickets.sector', sector)
+        }
 
         const { data: npsDataRaw } = await npsQuery
 
