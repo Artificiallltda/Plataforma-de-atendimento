@@ -166,18 +166,18 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
       {/* Board Header */}
       <div className="flex items-center justify-between px-2 py-6 mb-2">
         <div className="flex items-center gap-5">
-          <div className="h-14 w-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200 rotate-3 hover:rotate-0 transition-transform duration-500">
+          <div className="h-14 w-14 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200 dark:shadow-slate-900 rotate-3 hover:rotate-0 transition-transform duration-500">
             <Columns size={24} />
           </div>
           <div>
-            <h3 className="font-black text-slate-800 text-2xl tracking-tight">Fluxo de Atendimento</h3>
+            <h3 className="font-black text-slate-800 dark:text-slate-100 text-2xl tracking-tight">Fluxo de Atendimento</h3>
             <div className="flex items-center gap-2 mt-1">
               {sectorFilter && (
-                <span className="px-3 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg border border-blue-100 uppercase tracking-widest">
+                <span className="px-3 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black rounded-lg border border-blue-100 dark:border-blue-700/50 uppercase tracking-widest">
                   Setor: {sectorFilter}
                 </span>
               )}
-              <span className="px-3 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 uppercase tracking-widest flex items-center gap-1">
+              <span className="px-3 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black rounded-lg border border-emerald-100 dark:border-emerald-700/50 uppercase tracking-widest flex items-center gap-1">
                 <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
                 Tempo Real Ativo
               </span>
@@ -191,10 +191,10 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
             <input 
               type="text" 
               placeholder="Pesquisar por cliente ou ID..." 
-              className="pl-12 pr-6 py-3 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-slate-100 w-80 transition-all shadow-sm outline-none font-medium"
+              className="pl-12 pr-6 py-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-4 focus:ring-slate-100 dark:focus:ring-slate-700 w-80 transition-all shadow-sm outline-none font-medium"
             />
           </div>
-          <button className="p-3 bg-white hover:bg-slate-50 rounded-2xl text-slate-600 transition-all border border-slate-200 shadow-sm hover:shadow-md group">
+          <button className="p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl text-slate-600 dark:text-slate-400 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md group">
             <Filter size={20} className="group-hover:rotate-12 transition-transform" />
           </button>
         </div>
@@ -213,28 +213,28 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
               <motion.div 
                 key={col.id} 
                 variants={columnVariants}
-                className="flex flex-col w-[350px] min-w-[350px] bg-slate-200/20 backdrop-blur-md rounded-[32px] h-full border border-white/40 shadow-sm"
+                className="flex flex-col w-[350px] min-w-[350px] bg-slate-200/20 dark:bg-slate-800/40 backdrop-blur-md rounded-[32px] h-full border border-white/40 dark:border-slate-700/40 shadow-sm"
               >
                 {/* Column Header */}
                 <div className="p-6 flex items-center justify-between sticky top-0 z-10 bg-transparent">
                   <div className="flex items-center gap-4">
-                    <div className={cn("p-2.5 rounded-xl shadow-lg border border-white bg-white", col.color)}>
+                    <div className={cn("p-2.5 rounded-xl shadow-lg border border-white dark:border-slate-700 bg-white dark:bg-slate-800", col.color)}>
                       <col.icon size={20} />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{col.title}</h4>
+                      <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight">{col.title}</h4>
                       {isLoading ? (
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <div className="h-2 w-16 bg-slate-200 animate-pulse rounded-full" />
                         </div>
                       ) : (
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest opacity-70">
                           {boardData[col.id]?.length || 0} Atendimentos
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="h-2 w-2 rounded-full bg-slate-300" />
+                  <div className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
                 </div>
 
                 {/* Droppable Area */}
@@ -245,7 +245,7 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
                       ref={provided.innerRef}
                       className={cn(
                         "flex-1 p-4 transition-all duration-300 space-y-4 min-h-[500px]",
-                        snapshot.isDraggingOver && "bg-white/30"
+                        snapshot.isDraggingOver && "bg-white/30 dark:bg-white/5"
                       )}
                     >
                       {isLoading ? (
@@ -280,9 +280,9 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
                           
                           {/* Empty State visual */}
                           {(!boardData[col.id] || boardData[col.id].length === 0) && (
-                            <div className="h-32 rounded-3xl border-2 border-dashed border-slate-300/30 flex items-center justify-center">
-                               <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter opacity-50">Vazio</p>
-                            </div>
+                            <div className="h-32 rounded-3xl border-2 border-dashed border-slate-300/30 dark:border-slate-600/30 flex items-center justify-center">
+                             <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-tighter opacity-50">Vazio</p>
+                          </div>
                           )}
                         </>
                       )}

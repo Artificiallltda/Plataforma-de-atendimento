@@ -91,7 +91,7 @@ export function ModernLayout({ children }: ModernLayoutProps) {
               src="/brand/logo.png"
               alt="Artificiall"
               fill
-              className="object-contain dark:invert"
+              className="object-contain"
               priority
             />
           </div>
