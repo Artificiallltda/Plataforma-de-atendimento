@@ -237,15 +237,10 @@ export class SupportAgent {
   }
 
   /**
-   * Mensagem de escalada
+   * Mensagem de escalada — tom direto, sem clichês de telemarketing.
    */
   private getEscalationMessage(): string {
-    const messages = [
-      'Entendi sua insatisfação e lamento pela experiência. Vou transferir você imediatamente para um de nossos supervisores que poderá ajudar melhor.',
-      'Compreendo perfeitamente. Para resolver isso da melhor forma, vou acionar nosso time de atendimento especializado agora mesmo.',
-      'Sinto muito pelo ocorrido. Vou transferir você para um especialista humano que vai resolver isso com prioridade.'
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return 'Vou pedir para um colega da equipe humana entrar com a gente. Te chamamos por aqui mesmo em poucos minutos.';
   }
 
   /**

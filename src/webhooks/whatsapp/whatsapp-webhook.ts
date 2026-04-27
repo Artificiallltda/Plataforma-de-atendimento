@@ -79,11 +79,19 @@ export async function whatsappWebhookPost(
       return reply.code(500).send({ error: 'Configuração inválida' });
     }
 
-    // Validar assinatura do payload (opcional, mas recomendado em produção)
+    // Validar assinatura do payload — OBRIGATÓRIA em produção.
+    // Em dev (NODE_ENV !== 'production') aceita ausência para facilitar testes locais.
     const signature = request.headers['x-hub-signature-256'];
     const rawBody = Buffer.from(JSON.stringify(request.body));
-    
-    if (signature) {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (!signature) {
+      if (isProd) {
+        console.error('❌ Header x-hub-signature-256 ausente em produção');
+        return reply.code(401).send({ error: 'Signature required' });
+      }
+      console.warn('⚠️ Webhook WhatsApp sem signature (aceito em DEV apenas)');
+    } else {
       const signatureValid = await verifyPayloadSignature(signature, rawBody);
       if (!signatureValid) {
         console.error('❌ Assinatura do payload inválida');

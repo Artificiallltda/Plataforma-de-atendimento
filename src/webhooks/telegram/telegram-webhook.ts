@@ -73,10 +73,10 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
 
     if (processed.clarificationMessage) {
       console.log(`🤖 [Telegram] Respondendo para ${msg.userId}`);
+      // Sem parseMode: caracteres _, *, [, ] vindos do Gemini quebram o Markdown V1 do Telegram.
       await provider.sendMessage({
         to: msg.userId,
         text: processed.clarificationMessage,
-        parseMode: 'Markdown'
       });
     }
   } catch (error) {
@@ -170,13 +170,12 @@ function setupOutboundSync(provider: TelegramProvider) {
         }
       }
 
-      // 3. Formatar mensagem com identificação
-      const formattedBody = `*${agentName}*:\n${newMessage.body}`;
+      // 3. Formatar mensagem com identificação (texto puro — sem Markdown)
+      const formattedBody = `${agentName}:\n${newMessage.body}`;
 
-      await provider.sendMessage({ 
-        to: customer.channel_user_id, 
-        text: formattedBody, 
-        parseMode: 'Markdown' 
+      await provider.sendMessage({
+        to: customer.channel_user_id,
+        text: formattedBody,
       });
 
       console.log(`✅ [Telegram Outbound] Mensagem de "${agentName}" enviada para ${customer.channel_user_id}`);

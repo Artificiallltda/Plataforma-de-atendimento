@@ -79,9 +79,16 @@ export async function registerHealthRoutes(fastify: FastifyInstance) {
     const requiredVars = [
       'SUPABASE_URL',
       'SUPABASE_SERVICE_ROLE_KEY',
-      'GEMINI_API_KEY'
     ];
     const missingVars = requiredVars.filter(v => !process.env[v]);
+
+    // LLM: aceita Vertex (GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_CLOUD_PROJECT)
+    // OU API key direta (GEMINI_API_KEY ou GOOGLE_AI_API_KEY)
+    const hasVertex = !!(process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLOUD_PROJECT);
+    const hasApiKey = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
+    if (!hasVertex && !hasApiKey) {
+      missingVars.push('GEMINI_API_KEY|GOOGLE_AI_API_KEY|VERTEX_AI');
+    }
     
     checks.checks.environment = {
       status: missingVars.length > 0 ? 'error' : 'ok',

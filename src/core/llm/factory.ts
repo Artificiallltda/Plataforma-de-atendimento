@@ -56,9 +56,10 @@ export function getGeminiModel(modelName: string): unknown {
     logger.warn(`[LLM Factory] Aviso da Vertex AI: ${(error as Error).message}`);
     logger.info(`[LLM Factory] Fazendo fallback para GEMINI_API_KEY pessoal...`);
     
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Aceita ambos: GEMINI_API_KEY (canônico) e GOOGLE_AI_API_KEY (legacy do .env atual)
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
-      throw new Error("[CRÍTICO] GEMINI_API_KEY não está configurada e a infraestrutura principal falhou!");
+      throw new Error("[CRÍTICO] GEMINI_API_KEY/GOOGLE_AI_API_KEY não está configurada e a infraestrutura principal falhou!");
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);

@@ -154,32 +154,75 @@ export async function processIncomingMessage(message: {
     // 4. Delegar para o Agente Especialista (Fluidez Cognitiva)
     let agentResponse = classification.humanResponse;
     let needsHumanHandoff = false;
-    
-    const agentContext = {
+
+    // Profile do cliente normalizado para o formato esperado pelos agents (camelCase)
+    const rawCustomer = (customerContext as any)?.customer || { id: message.customer_id, is_active: true };
+    const customerProfile = {
+      id: rawCustomer.id || message.customer_id,
+      name: rawCustomer.name,
+      plan: rawCustomer.plan,
+      isActive: rawCustomer.is_active ?? rawCustomer.isActive ?? true,
+      guru_subscription_id: rawCustomer.guru_subscription_id,
+      asaas_customer_id: rawCustomer.asaas_customer_id,
+      email: rawCustomer.email,
+      phone: rawCustomer.phone,
+      company: rawCustomer.company,
+      cnpj: rawCustomer.cnpj,
+      employeeCount: rawCustomer.employee_count ?? rawCustomer.employeeCount,
+    };
+
+    const conversationHistory = history.concat([
+      { sender: 'customer', body: message.body, timestamp: new Date() }
+    ]);
+
+    // Contexto unificado: snake_case (legado) + camelCase (esperado pelos agents).
+    // Manter ambos evita quebrar callers antigos enquanto o flow novo funciona.
+    const agentContext: any = {
       ticket_id: finalTicketId,
       customer_id: message.customer_id,
-      conversation_history: history.concat([{ sender: 'customer', body: message.body, timestamp: new Date() }]),
-      customer_profile: (customerContext as any)?.customer || { id: message.customer_id, is_active: true },
-      sector: sector as any,
-      intent: classification.intent
+      sector,
+      intent: classification.intent,
+      // camelCase (formato canônico dos agents)
+      conversationHistory,
+      customerProfile,
+      // snake_case (back-compat)
+      conversation_history: conversationHistory,
+      customer_profile: customerProfile,
     };
 
     console.log(`🤖 [MPS] Delegando para agente '${sector}':`, {
       ticket_id: finalTicketId,
-      history_length: agentContext.conversation_history.length
+      history_length: conversationHistory.length,
+      customer_active: customerProfile.isActive,
     });
+
+    // 4a. PRÉ-CHECK de controle humano: se ticket já está em mãos humanas,
+    // não chama nenhum agente especialista (evita gastar tokens à toa
+    // e elimina race entre handoff e resposta da IA).
+    const ticketStatusEarly = (currentStatus as any)?.status ?? '';
+    const hasRecentHumanMsgEarly = history.some(m => m.sender === 'human');
+    const isHumanControlEarly = ['em_atendimento', 'aguardando_humano'].includes(ticketStatusEarly);
+
+    if (isHumanControlEarly || hasRecentHumanMsgEarly) {
+      console.log(`🔕 [Bot] Ticket ${finalTicketId} já sob controle humano (Status: ${ticketStatusEarly}). Pulando IA.`);
+      return {
+        ticketId: finalTicketId,
+        clarificationMessage: null,
+        sector,
+      };
+    }
 
     // Chamar o agente correto baseado na classificação fluida
     if (sector === 'suporte') {
-      const result = await getSupportAgent().processMessage(agentContext as any);
+      const result = await getSupportAgent().processMessage(agentContext);
       agentResponse = result.response;
       needsHumanHandoff = (result as any).needsHumanHandoff;
     } else if (sector === 'comercial') {
-      const result = await getSalesAgent().processMessage(agentContext as any);
+      const result = await getSalesAgent().processMessage(agentContext);
       agentResponse = result.response;
       needsHumanHandoff = result.needsHumanHandoff;
     } else if (sector === 'financeiro') {
-      const result = await getFinanceAgent().processMessage(agentContext as any);
+      const result = await getFinanceAgent().processMessage(agentContext);
       agentResponse = result.response;
       needsHumanHandoff = (result as any).needsHumanHandoff;
     }
@@ -191,27 +234,28 @@ export async function processIncomingMessage(message: {
       responsePreview: agentResponse?.substring(0, 100)
     });
 
-    // 4b. Executar TRANSBORDO se solicitado
+    // 4b. Executar TRANSBORDO se solicitado pelo agente
     if (needsHumanHandoff) {
       console.log(`🚀 Escalando ticket ${finalTicketId} para humano.`);
-      await (supabase.from('tickets') as any).update({ 
+      await (supabase.from('tickets') as any).update({
         status: 'aguardando_humano',
-        priority: 'alta' 
+        priority: 'alta'
       }).eq('id', finalTicketId);
-    }
 
-    // 4c. SE JÁ ESTIVER EM MÃOS HUMANAS OU SE HOUVER SINAL DE VIDA HUMANA RECENTE, PARAMOS AQUI
-    const hasRecentHumanMsg = history.some(m => m.sender === 'human');
-    const ticketStatus = (currentStatus as any)?.status ?? '';
-    const isHumanControl = ['em_atendimento', 'aguardando_humano'].includes(ticketStatus);
-
-    if (isHumanControl || hasRecentHumanMsg) {
-      console.log(`🔕 [Bot] Ticket ${finalTicketId} sob controle humano (Status: ${ticketStatus || 'desconhecido'}, Humano no histórico: ${hasRecentHumanMsg}). Silenciando.`);
-      return { 
-        ticketId: finalTicketId, 
-        clarificationMessage: null,
-        sector: sector
-      };
+      // Notificação humana imediata (Slack/email): best-effort, não bloqueia.
+      try {
+        const { notifyHumanHandoff } = await import('./handoff-notifier');
+        await notifyHumanHandoff({
+          ticketId: finalTicketId as string,
+          channel: message.channel,
+          sector,
+          customerId: message.customer_id,
+          intent: classification.intent,
+          lastUserMessage: message.body,
+        });
+      } catch (notifyErr) {
+        console.warn('⚠️ [MPS] Falha ao notificar handoff humano:', notifyErr instanceof Error ? notifyErr.message : notifyErr);
+      }
     }
 
     // 5. [CRÍTICO] PERSISTIR RESPOSTA DA IA NO BANCO DE DADOS
