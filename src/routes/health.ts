@@ -75,12 +75,19 @@ export async function registerHealthRoutes(fastify: FastifyInstance) {
       percentage
     };
 
-    // Check environment variables
-    const requiredVars = [
-      'SUPABASE_URL',
-      'SUPABASE_SERVICE_ROLE_KEY',
-    ];
-    const missingVars = requiredVars.filter(v => !process.env[v]);
+    // Check environment variables — aceita aliases comuns vindos do Dashboard
+    // (NEXT_PUBLIC_*) ou do backend puro (sem prefixo).
+    const missingVars: string[] = [];
+
+    const hasSupabaseUrl = !!(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (!hasSupabaseUrl) missingVars.push('SUPABASE_URL|NEXT_PUBLIC_SUPABASE_URL');
+
+    const hasSupabaseKey = !!(
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+    if (!hasSupabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY');
 
     // LLM: aceita Vertex (GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_CLOUD_PROJECT)
     // OU API key direta (GEMINI_API_KEY ou GOOGLE_AI_API_KEY)
