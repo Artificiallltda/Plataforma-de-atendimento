@@ -27,6 +27,8 @@ export function AddAgentModal({ isOpen, onClose, onSuccess }: AddAgentModalProps
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,14 +36,11 @@ export function AddAgentModal({ isOpen, onClose, onSuccess }: AddAgentModalProps
     setError(null)
 
     try {
-      // Chamar a API do backend que criamos (admin-auth)
+      // Backend gera senha aleatória forte e devolve em `temporary_password`
       const response = await fetch('/api/admin/register-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          password: '@Artificiall123' // Senha padrão definida pelo usuário
-        })
+        body: JSON.stringify(formData)
       })
 
       const data = await response.json()
@@ -50,18 +49,33 @@ export function AddAgentModal({ isOpen, onClose, onSuccess }: AddAgentModalProps
         throw new Error(data.error || 'Erro ao registrar atendente')
       }
 
+      setTempPassword(data.temporary_password || null)
       setSuccess(true)
-      setTimeout(() => {
-        onSuccess()
-        onClose()
-        setSuccess(false)
-        setFormData({ name: '', email: '', sector: 'suporte' })
-      }, 2000)
-
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    onSuccess()
+    onClose()
+    setSuccess(false)
+    setTempPassword(null)
+    setCopied(false)
+    setFormData({ name: '', email: '', sector: 'suporte' })
+  }
+
+  const copyCredentials = async () => {
+    if (!tempPassword) return
+    const text = `Email: ${formData.email}\nSenha temporária: ${tempPassword}\n\nAcesse: ${window.location.origin}/login\nNo primeiro acesso, troque a senha em "Esqueci minha senha".`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Não foi possível copiar — selecione e copie manualmente.')
     }
   }
 
@@ -104,16 +118,53 @@ export function AddAgentModal({ isOpen, onClose, onSuccess }: AddAgentModalProps
             {/* Body */}
             <div className="p-8">
               {success ? (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="py-12 text-center"
+                  className="py-6 text-center"
                 >
-                  <div className="h-20 w-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 size={40} />
+                  <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={32} />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-800 mb-2">Sucesso!</h4>
-                  <p className="text-slate-500">Atendente criado com a senha padrão.</p>
+                  <h4 className="text-xl font-bold text-slate-800 mb-2">Atendente criado!</h4>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Copie as credenciais abaixo e envie para o atendente em canal seguro.
+                  </p>
+
+                  {tempPassword && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2 mb-4">
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase">Email</p>
+                        <p className="text-sm font-mono text-slate-800 break-all">{formData.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase">Senha temporária</p>
+                        <p className="text-sm font-mono text-slate-800 select-all">{tempPassword}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={copyCredentials}
+                      disabled={!tempPassword}
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-colors disabled:opacity-50"
+                    >
+                      {copied ? 'Copiado!' : 'Copiar credenciais'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      className="w-full py-3 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold rounded-2xl transition-colors"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mt-3">
+                    Recomende ao atendente trocar a senha em "Esqueci minha senha".
+                  </p>
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
