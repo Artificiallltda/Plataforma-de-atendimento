@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { User, CheckCircle2, Bot, ShieldOff } from 'lucide-react'
 import { getCustomerLabel, getCustomerSubLabel } from '@/lib/customer-display'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface InboxProps {
   ticket: Ticket
@@ -37,6 +38,7 @@ export function Inbox({ ticket, sender_id, onBack }: InboxProps) {
     customer_id: ticket.customer_id 
   })
   const [currentStatus, setCurrentStatus] = useState(ticket.status)
+  const [confirmResolve, setConfirmResolve] = useState(false)
 
   const handleStatusChange = async (newStatus: any) => {
     const result = await updateTicketStatus(ticket.id, newStatus)
@@ -46,6 +48,12 @@ export function Inbox({ ticket, sender_id, onBack }: InboxProps) {
         router.push('/dashboard')
       }
     }
+  }
+
+  const requestResolve = () => setConfirmResolve(true)
+  const confirmResolveAction = async () => {
+    setConfirmResolve(false)
+    await handleStatusChange('resolvido')
   }
 
   const handleTakeOwnership = async () => {
@@ -98,7 +106,7 @@ export function Inbox({ ticket, sender_id, onBack }: InboxProps) {
 
           {currentStatus === 'em_atendimento' && (
             <button
-              onClick={() => handleStatusChange('resolvido')}
+              onClick={requestResolve}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-sm"
             >
               <CheckCircle2 size={16} />
@@ -161,6 +169,17 @@ export function Inbox({ ticket, sender_id, onBack }: InboxProps) {
         sender_id={sender_id}
         onMessageSent={() => {}}
         onStatusChange={handleStatusChange}
+      />
+
+      <ConfirmDialog
+        open={confirmResolve}
+        title="Finalizar este atendimento?"
+        description={`O ticket será marcado como resolvido e o cliente ${customerLabel} receberá a pesquisa de satisfação.`}
+        confirmLabel="Sim, finalizar"
+        cancelLabel="Voltar"
+        variant="default"
+        onConfirm={confirmResolveAction}
+        onCancel={() => setConfirmResolve(false)}
       />
     </div>
   )

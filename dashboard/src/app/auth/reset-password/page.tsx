@@ -17,12 +17,16 @@ export default function ResetPasswordPage() {
 
   // O Supabase injeta a sessão via hash na URL — aguardamos o evento
   useEffect(() => {
-    supabase.auth.onAuthStateChange(async (event) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'PASSWORD_RECOVERY') {
         // Sessão de recuperação ativa — usuário pode redefinir senha
       }
     })
-  }, [])
+
+    return () => {
+      subscription.subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()

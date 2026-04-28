@@ -22,6 +22,7 @@ export default function AdminAgentsPage() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null)
   const supabase = createClient()
 
   const loadAgents = async () => {
@@ -31,11 +32,12 @@ export default function AdminAgentsPage() {
         .from('agents')
         .select('*')
         .order('name')
-      
+
       if (error) throw error
       setAgents(data || [])
     } catch (err) {
       console.error('Erro ao carregar agentes:', err)
+      setFeedback({ kind: 'error', message: 'Falha ao carregar atendentes.' })
     } finally {
       setLoading(false)
     }
@@ -43,21 +45,45 @@ export default function AdminAgentsPage() {
 
   useEffect(() => {
     loadAgents()
+
+    const channel = supabase
+      .channel('admin-agents-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, () => {
+        loadAgents()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente remover este atendente? Esta ação é irreversível.')) return
+  // Auto-clear feedback após 4s
+  useEffect(() => {
+    if (!feedback) return
+    const t = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(t)
+  }, [feedback])
+
+  const handleDelete = async (id: string, name?: string) => {
+    if (!confirm(`Deseja realmente remover ${name || 'este atendente'}? Esta ação é irreversível.`)) return
 
     try {
       const response = await fetch(`/api/admin/register-agent?id=${id}`, {
         method: 'DELETE'
       })
 
-      if (!response.ok) throw new Error('Erro ao deletar')
-      
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '')
+        throw new Error(detail || `Status ${response.status}`)
+      }
+
+      setFeedback({ kind: 'success', message: 'Atendente removido com sucesso.' })
       loadAgents()
     } catch (err) {
-      alert('Erro ao remover agente')
+      const message = err instanceof Error ? err.message : 'Erro desconhecido'
+      console.error('Erro ao remover agente:', message)
+      setFeedback({ kind: 'error', message: `Erro ao remover: ${message}` })
     }
   }
 
@@ -71,10 +97,10 @@ export default function AdminAgentsPage() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Gestão de Equipe</h1>
-          <p className="text-slate-500 mt-1">Gerencie os acessos e setores dos atendentes da PAA.</p>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Gestão de Equipe</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Gerencie os acessos e setores dos atendentes da PAA.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="premium-gradient text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-100"
         >
@@ -83,57 +109,68 @@ export default function AdminAgentsPage() {
         </button>
       </div>
 
+      {feedback && (
+        <div className={cn(
+          'p-4 rounded-2xl border text-sm font-medium',
+          feedback.kind === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300'
+            : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-300'
+        )}>
+          {feedback.message}
+        </div>
+      )}
+
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Total de Agentes" value={agents.length} icon={UserCheck} color="text-blue-600" bg="bg-blue-50" />
-        <StatCard title="Setor Suporte" value={agents.filter(a => a.sector === 'suporte').length} icon={Shield} color="text-purple-600" bg="bg-purple-50" />
-        <StatCard title="Setor Financeiro" value={agents.filter(a => a.sector === 'financeiro').length} icon={Shield} color="text-emerald-600" bg="bg-emerald-50" />
+        <StatCard title="Total de Agentes" value={agents.length} icon={UserCheck} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/30" />
+        <StatCard title="Setor Suporte" value={agents.filter(a => a.sector === 'suporte').length} icon={Shield} color="text-purple-600 dark:text-purple-400" bg="bg-purple-50 dark:bg-purple-900/30" />
+        <StatCard title="Setor Financeiro" value={agents.filter(a => a.sector === 'financeiro').length} icon={Shield} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-900/30" />
       </div>
 
       {/* Search & Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome ou email..." 
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou email..."
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/50 focus:border-blue-400 dark:focus:border-blue-500 outline-none transition-all"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <p className="text-sm font-medium text-slate-500">{filteredAgents.length} atendentes encontrados</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{filteredAgents.length} atendentes encontrados</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Atendente</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Setor</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Criado em</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
+              <tr className="bg-slate-50/50 dark:bg-slate-900/50">
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Atendente</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Setor</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Criado em</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={5} className="px-6 py-8 animate-pulse bg-slate-50/20" />
+                    <td colSpan={5} className="px-6 py-8 animate-pulse bg-slate-50/20 dark:bg-slate-900/40" />
                   </tr>
                 ))
               ) : filteredAgents.map((agent) => (
-                <tr key={agent.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={agent.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/40 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold border border-slate-200">
+                      <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-600">
                         {agent.name?.charAt(0) || '?'}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 leading-none mb-1">{agent.name}</p>
-                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 leading-none mb-1">{agent.name}</p>
+                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                           <Mail size={12} />
                           {agent.email}
                         </div>
@@ -143,30 +180,30 @@ export default function AdminAgentsPage() {
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-3 py-1 rounded-full text-xs font-bold capitalize",
-                      agent.sector === 'supervisor' ? "bg-amber-100 text-amber-700" :
-                      agent.sector === 'suporte' ? "bg-blue-100 text-blue-700" :
-                      agent.sector === 'financeiro' ? "bg-emerald-100 text-emerald-700" :
-                      "bg-purple-100 text-purple-700"
+                      agent.sector === 'supervisor' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" :
+                      agent.sector === 'suporte' ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" :
+                      agent.sector === 'financeiro' ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" :
+                      "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                     )}>
                       {agent.sector}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className={cn("h-2 w-2 rounded-full", agent.is_online ? "bg-emerald-500 animate-pulse" : "bg-slate-300")} />
-                      <span className="text-xs font-medium text-slate-600">{agent.is_online ? 'Online' : 'Offline'}</span>
+                      <div className={cn("h-2 w-2 rounded-full", agent.is_online ? "bg-emerald-500 animate-pulse" : "bg-slate-300 dark:bg-slate-500")} />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{agent.is_online ? 'Online' : 'Offline'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
                       <Calendar size={14} />
                       {new Date(agent.created_at).toLocaleDateString('pt-BR')}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => handleDelete(agent.id)}
-                      className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
+                    <button
+                      onClick={() => handleDelete(agent.id, agent.name)}
+                      className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-all"
                       title="Remover Agente"
                     >
                       <UserMinus size={18} />
@@ -190,13 +227,13 @@ export default function AdminAgentsPage() {
 
 function StatCard({ title, value, icon: Icon, color, bg }: any) {
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-200 flex items-center gap-5 shadow-sm">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 flex items-center gap-5 shadow-sm">
       <div className={cn("p-4 rounded-2xl shadow-sm", bg, color)}>
         <Icon size={24} />
       </div>
       <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-black text-slate-800">{value}</p>
+        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{value}</p>
       </div>
     </div>
   )
