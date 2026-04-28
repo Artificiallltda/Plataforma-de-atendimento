@@ -89,7 +89,7 @@ export function MessageInput({
   }
 
   return (
-    <div className="border-t bg-white p-4 space-y-3">
+    <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-3">
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2">
         {quickActions.map(action => (
@@ -110,7 +110,7 @@ export function MessageInput({
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Digite sua resposta... (Enter para enviar, Shift+Enter para nova linha)"
-          className="flex-1 px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none resize-none transition-all duration-200 text-slate-700 font-medium"
+          className="flex-1 px-5 py-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/50 focus:border-indigo-500 dark:focus:border-indigo-400 outline-none resize-none transition-all duration-200 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
           rows={4}
           disabled={sending}
         />
@@ -125,11 +125,11 @@ export function MessageInput({
 
       {/* Error */}
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
       {/* Help Text */}
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         💡 Dica: Use Shift+Enter para pular linha
       </p>
     </div>

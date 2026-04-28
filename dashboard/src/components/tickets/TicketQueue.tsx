@@ -53,8 +53,8 @@ export function TicketQueue({ sector }: TicketQueueProps) {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-        <strong>Erro:</strong> {error}
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
+        <strong>Erro:</strong> {error instanceof Error ? error.message : String(error)}
       </div>
     )
   }

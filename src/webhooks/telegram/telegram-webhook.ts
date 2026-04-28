@@ -20,11 +20,15 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
     text: msg.text?.substring(0, 50)
   });
 
+  // Garante que `name` nunca é null/empty: cliente sem first_name ainda recebe rótulo identificável
+  const safeName = (msg.userName && msg.userName.trim())
+    || `Telegram ${msg.userId.slice(-4)}`;
+
   const result = await normalizeAndSaveGenericMessage(
     {
       external_id: `${msg.userId}-${Date.now()}`,
       from: msg.userId,
-      name: msg.userName,
+      name: safeName,
       body: msg.text,
       media_url: msg.imageUrl,
       media_type: msg.mediaType as any,

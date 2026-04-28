@@ -1,4 +1,5 @@
 import { Ticket } from '@/hooks/use-tickets'
+import { getCustomerLabel } from '@/lib/customer-display'
 
 interface TicketCardProps {
   ticket: Ticket
@@ -6,18 +7,18 @@ interface TicketCardProps {
 }
 
 const priorityConfig = {
-  critica: { color: 'border-red-500', bg: 'bg-red-50', icon: '🚨' },
-  alta: { color: 'border-orange-500', bg: 'bg-orange-50', icon: '🟠' },
-  media: { color: 'border-green-500', bg: 'bg-green-50', icon: '🟢' },
-  baixa: { color: 'border-gray-500', bg: 'bg-gray-50', icon: '⚪' }
+  critica: { color: 'border-rose-500', bg: 'bg-rose-50 dark:bg-rose-900/20', icon: '🚨' },
+  alta: { color: 'border-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: '🟠' },
+  media: { color: 'border-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: '🟢' },
+  baixa: { color: 'border-slate-300', bg: 'bg-slate-50 dark:bg-slate-700/40', icon: '⚪' }
 }
 
 const statusConfig = {
-  novo: { label: 'Novo', class: 'bg-blue-100 text-blue-800' },
-  bot_ativo: { label: 'Bot Ativo', class: 'bg-purple-100 text-purple-800' },
-  aguardando_humano: { label: 'Aguardando Humano', class: 'bg-yellow-100 text-yellow-800' },
-  em_atendimento: { label: 'Em Atendimento', class: 'bg-orange-100 text-orange-800' },
-  resolvido: { label: 'Resolvido', class: 'bg-green-100 text-green-800' }
+  novo: { label: 'Novo', class: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' },
+  bot_ativo: { label: 'Bot Ativo', class: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' },
+  aguardando_humano: { label: 'Aguardando Humano', class: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' },
+  em_atendimento: { label: 'Em Atendimento', class: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' },
+  resolvido: { label: 'Resolvido', class: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300' }
 }
 
 const channelIcons = {
@@ -37,17 +38,17 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
   return (
     <div
       onClick={() => onClick?.(ticket)}
-      className={`bg-white rounded-lg shadow-sm border-l-4 ${priority.color} p-4 cursor-pointer hover:shadow-md transition cursor-pointer`}
+      className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border-l-4 ${priority.color} p-4 cursor-pointer hover:shadow-md dark:hover:bg-slate-800/80 transition`}
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">{priority.icon}</span>
           <div>
-            <h3 className="font-semibold text-gray-900">
-              {ticket.customer?.name || 'Cliente não identificado'}
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+              {getCustomerLabel(ticket)}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {channelIcon} {ticket.channel} • #{ticket.id.slice(0, 8)}
             </p>
           </div>
@@ -59,13 +60,13 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
 
       {/* Intent */}
       {ticket.intent && (
-        <p className="text-sm text-gray-700 mb-3 line-clamp-2">
+        <p className="text-sm text-slate-700 dark:text-slate-300 mb-3 line-clamp-2">
           {ticket.intent}
         </p>
       )}
 
       {/* Footer */}
-      <div className="flex justify-between items-center text-xs text-gray-500">
+      <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
         <span>⏱️ {waitTime}</span>
         {ticket.current_agent && (
           <span className="flex items-center gap-1">
@@ -73,7 +74,7 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
           </span>
         )}
         {ticket.priority === 'critica' && (
-          <span className="text-red-600 font-medium animate-pulse">
+          <span className="text-rose-600 dark:text-rose-400 font-medium animate-pulse">
             CRÍTICO
           </span>
         )}

@@ -81,8 +81,8 @@ export function AgentsList({ agents, loading }: AgentsListProps) {
   const offlineAgents = agents.filter(a => !a.isOnline)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
         👥 Agentes Online ({onlineAgents.length})
       </h3>
 
@@ -94,7 +94,7 @@ export function AgentsList({ agents, loading }: AgentsListProps) {
 
       {offlineAgents.length > 0 && (
         <>
-          <h4 className="text-sm font-medium text-gray-600 mt-6 mb-3">
+          <h4 className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-6 mb-3">
             Offline ({offlineAgents.length})
           </h4>
           <div className="space-y-3">
@@ -120,17 +120,17 @@ function AgentRow({ agent }: AgentRowProps) {
     supervisor: '👑'
   }
 
-  const loadColor = agent.ticketsAtivos > 5 ? 'text-red-600 font-medium' :
-                    agent.ticketsAtivos > 3 ? 'text-yellow-600' :
-                    'text-gray-600'
+  const loadColor = agent.ticketsAtivos > 5 ? 'text-rose-600 dark:text-rose-400 font-medium' :
+                    agent.ticketsAtivos > 3 ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-slate-600 dark:text-slate-300'
 
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
       <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full ${agent.isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+        <div className={`w-2 h-2 rounded-full ${agent.isOnline ? 'bg-green-500' : 'bg-slate-400 dark:bg-slate-500'}`} />
         <div>
-          <p className="font-medium text-gray-900">{agent.name}</p>
-          <p className="text-xs text-gray-500">
+          <p className="font-medium text-slate-900 dark:text-slate-100">{agent.name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {sectorIcons[agent.sector]} {agent.sector}
           </p>
         </div>

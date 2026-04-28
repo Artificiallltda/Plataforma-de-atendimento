@@ -16,6 +16,7 @@ import {
 import { motion } from 'framer-motion'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { getCustomerLabel } from '@/lib/customer-display'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -83,8 +84,7 @@ export function KanbanCard({ ticket, onClick, isDragging }: KanbanCardProps) {
   }
 
   const SentimentIcon = sentimentConfig[sentiment].icon
-  const customerData = (ticket as any).customer
-  const customerName = (Array.isArray(customerData) ? customerData[0]?.name : customerData?.name) || 'Identificando...'
+  const customerName = getCustomerLabel(ticket as any)
 
   const intentMap: Record<string, string> = {
     'saudacao': '👋 Saudação / Início',

@@ -30,6 +30,7 @@ export interface Ticket {
   customer?: {
     name: string | null;
     phone: string | null;
+    channel_user_id?: string | null;
   };
 }
 
@@ -89,7 +90,8 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
           *,
           customer:customers (
             name,
-            phone
+            phone,
+            channel_user_id
           )
         `);
 

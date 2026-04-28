@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useKpis } from '@/hooks/use-kpis'
-import { ModernLayout } from '@/components/layout/ModernLayout'
 import { LiveMetrics } from '@/components/analytics/LiveMetrics'
 import { PerformanceCharts } from '@/components/analytics/PerformanceCharts'
 import { ExportButton } from '@/components/export/ExportButton'
@@ -55,10 +54,10 @@ export default function SupervisorDashboardPage() {
 
   if (checking || kpisLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 text-blue-600 mx-auto" />
-          <p className="mt-4 text-slate-500 font-medium">Carregando Painel de Controle...</p>
+          <Loader2 className="animate-spin h-12 w-12 text-blue-600 dark:text-blue-400 mx-auto" />
+          <p className="mt-4 text-slate-500 dark:text-slate-400 font-medium">Carregando Painel de Controle...</p>
         </div>
       </div>
     )
@@ -76,19 +75,18 @@ export default function SupervisorDashboardPage() {
   }
 
   return (
-    <ModernLayout>
-      <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-              Control Center <ShieldCheck className="text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-3">
+              Control Center <ShieldCheck className="text-blue-600 dark:text-blue-400" />
             </h1>
-            <p className="text-slate-500 mt-1">Visão holística e analítica da operação em tempo real.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Visão holística e analítica da operação em tempo real.</p>
           </div>
           <div className="flex items-center gap-3">
             <ExportButton type="report" data={{ kpis }} variant="primary" />
-            <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 transition-colors shadow-sm">
+            <button className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors shadow-sm">
               <MoreVertical size={20} />
             </button>
           </div>
@@ -103,14 +101,14 @@ export default function SupervisorDashboardPage() {
         {/* Secondary Info Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Fila por Setor */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-card p-8 xl:col-span-2"
           >
             <div className="flex items-center justify-between mb-8">
-              <h4 className="font-bold text-slate-800 text-lg">Distribuição de Carga</h4>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-tight">
+              <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Distribuição de Carga</h4>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full uppercase tracking-tight">
                 <Users size={14} /> Ativos Agora
               </div>
             </div>
@@ -146,8 +144,7 @@ export default function SupervisorDashboardPage() {
             </button>
           </motion.div>
         </div>
-      </div>
-    </ModernLayout>
+    </div>
   )
 }
 
@@ -156,11 +153,11 @@ function SectorProgress({ label, count, total, color }: any) {
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-end">
-        <span className="text-sm font-bold text-slate-700">{label}</span>
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{count} Tickets</span>
+        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</span>
+        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{count} Tickets</span>
       </div>
-      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-        <motion.div 
+      <div className="h-3 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden border border-slate-200 dark:border-slate-600">
+        <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 1, ease: 'easeOut' }}
