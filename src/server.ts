@@ -1,3 +1,7 @@
+// MUST be first import: materializa Service Account JSON e popula
+// GOOGLE_CLOUD_PROJECT antes que qualquer modulo eager-instancie agentes Vertex.
+import './bootstrap';
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { registerWhatsappWebhook } from './webhooks/whatsapp/whatsapp-webhook';
