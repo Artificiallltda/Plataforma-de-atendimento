@@ -37,6 +37,12 @@ const senderConfig = {
 }
 
 export function MessageList({ messages, loading }: MessageListProps) {
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages.length])
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/50">
@@ -104,8 +110,40 @@ export function MessageList({ messages, loading }: MessageListProps) {
 
                   {/* Media */}
                   {message.media_url && (
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      📎 {message.media_type || 'Mídia'}
+                    <div className="mt-2 max-w-full">
+                      {message.media_type === 'image' && (
+                        <a href={message.media_url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={message.media_url}
+                            alt="Mídia enviada"
+                            className="rounded-xl max-h-64 max-w-full object-cover border border-slate-200 dark:border-slate-700"
+                          />
+                        </a>
+                      )}
+                      {message.media_type === 'audio' && (
+                        <audio
+                          src={message.media_url}
+                          controls
+                          className="max-w-full"
+                        />
+                      )}
+                      {message.media_type === 'video' && (
+                        <video
+                          src={message.media_url}
+                          controls
+                          className="rounded-xl max-h-64 max-w-full border border-slate-200 dark:border-slate-700"
+                        />
+                      )}
+                      {(message.media_type === 'document' || !['image', 'audio', 'video'].includes(message.media_type || '')) && (
+                        <a
+                          href={message.media_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                        >
+                          📎 Abrir {message.media_type || 'arquivo'}
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
@@ -113,6 +151,7 @@ export function MessageList({ messages, loading }: MessageListProps) {
             </div>
           )
         })}
+        <div ref={bottomRef} />
       </div>
     </div>
   )

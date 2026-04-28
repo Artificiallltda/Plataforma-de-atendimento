@@ -36,6 +36,7 @@ export function useKpis(enabled: boolean = true) {
           tmr,
           csat,
           botContainment,
+          totalResolvidos,
           agentesOnline,
           filaSuporte,
           filaFinanceiro,
@@ -124,11 +125,12 @@ export function useKpis(enabled: boolean = true) {
           csatMedio = Math.round((total / csat.data.length) * 10) / 10
         }
 
-        // Calcular Bot Containment Rate
+        // Bot Containment Rate = % de tickets resolvidos sem precisar de humano
+        // Numerador: resolvidos com assigned_to NULL
+        // Denominador: total de tickets resolvidos
         let botContainmentRate = 0
-        if (botContainment.count && ticketsAbertos.count) {
-          const total = (ticketsAbertos.count || 0) + (botContainment.count || 0)
-          botContainmentRate = Math.round((botContainment.count / total) * 100)
+        if (totalResolvidos.count && totalResolvidos.count > 0) {
+          botContainmentRate = Math.round(((botContainment.count || 0) / totalResolvidos.count) * 100)
         }
 
         setKpis({

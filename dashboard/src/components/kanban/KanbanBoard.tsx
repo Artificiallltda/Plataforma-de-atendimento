@@ -6,23 +6,20 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { Ticket } from '@/hooks/use-tickets'
 import { KanbanCard } from './KanbanCard'
 import { KanbanCardSkeleton } from './KanbanCardSkeleton'
-import { 
-  Plus, 
-  MoreHorizontal, 
+import {
   Columns,
   Search,
-  Filter,
   CheckCircle2,
   Clock,
   Bot,
   User,
-  Zap,
-  Loader2
+  Zap
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { getCustomerLabel } from '@/lib/customer-display'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -70,6 +67,7 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
   const router = useRouter()
   const [boardData, setBoardData] = useState<Record<string, Ticket[]>>({})
   const [isDragging, setIsDragging] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -84,14 +82,23 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
       resolvido: []
     }
 
-    initialTickets.forEach(ticket => {
+    const q = searchQuery.trim().toLowerCase()
+    const filtered = q
+      ? initialTickets.filter(t => {
+          const label = getCustomerLabel(t as any).toLowerCase()
+          const idShort = t.id.slice(0, 8).toLowerCase()
+          return label.includes(q) || idShort.includes(q) || t.id.toLowerCase().includes(q)
+        })
+      : initialTickets
+
+    filtered.forEach(ticket => {
       if (organized[ticket.status]) {
         organized[ticket.status].push(ticket)
       }
     })
 
     setBoardData(organized)
-  }, [initialTickets, isDragging])
+  }, [initialTickets, isDragging, searchQuery])
 
   const onDragStart = () => {
     setIsDragging(true)
@@ -187,16 +194,15 @@ export function KanbanBoard({ initialTickets, sectorFilter, isLoading }: KanbanB
         
         <div className="flex items-center gap-4">
           <div className="relative group hidden lg:block">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Pesquisar por cliente ou ID..." 
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 dark:group-focus-within:text-slate-100 transition-colors" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar por cliente ou ID..."
               className="pl-12 pr-6 py-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-4 focus:ring-slate-100 dark:focus:ring-slate-700 w-80 transition-all shadow-sm outline-none font-medium"
             />
           </div>
-          <button className="p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl text-slate-600 dark:text-slate-400 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md group">
-            <Filter size={20} className="group-hover:rotate-12 transition-transform" />
-          </button>
         </div>
       </div>
 

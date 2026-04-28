@@ -152,10 +152,23 @@ export function useTickets({ sector, status, enabled = true }: UseTicketsProps =
     }
   }, [enabled, isAuthenticated, loadTickets]);
 
-  // Handler para mudanças no realtime
-  const handleTicketChange = useCallback(() => {
-    // Recarregar tickets quando houver mudança
-    loadTickets();
+  // Handler para mudanças no realtime — incremental (sem full reload)
+  const handleTicketChange = useCallback((payload: unknown) => {
+    const event = payload as { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; new: Record<string, unknown>; old: Record<string, unknown> };
+
+    if (event.eventType === 'DELETE') {
+      const oldTicket = event.old as { id?: string };
+      if (oldTicket?.id) {
+        setTickets(prev => prev.filter(t => t.id !== oldTicket.id));
+      }
+      return;
+    }
+
+    if (event.eventType === 'INSERT' || event.eventType === 'UPDATE') {
+      // INSERT/UPDATE não trazem o customer embedded — recarrega só pra trazer
+      // o relacionamento. Mais barato que full reload pq evita flicker no drag.
+      loadTickets();
+    }
   }, [loadTickets]);
 
   // Usar hook de realtime

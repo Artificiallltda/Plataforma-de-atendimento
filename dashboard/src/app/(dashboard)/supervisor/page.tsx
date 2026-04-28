@@ -7,13 +7,11 @@ import { useKpis } from '@/hooks/use-kpis'
 import { LiveMetrics } from '@/components/analytics/LiveMetrics'
 import { PerformanceCharts } from '@/components/analytics/PerformanceCharts'
 import { ExportButton } from '@/components/export/ExportButton'
-import { 
-  Loader2, 
-  TrendingUp, 
-  ShieldCheck, 
-  Users, 
-  MessageSquare,
-  ChevronRight,
+import {
+  Loader2,
+  TrendingUp,
+  ShieldCheck,
+  Users,
   MoreVertical
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -120,28 +118,37 @@ export default function SupervisorDashboardPage() {
             </div>
           </motion.div>
 
-          {/* Quick Actions / Alerts */}
-          <motion.div 
+          {/* Snapshot operacional — dados reais dos KPIs */}
+          <motion.div
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
-             className="glass-card p-8 bg-slate-900 border-none text-white overflow-hidden relative"
+             className="glass-card p-8 bg-slate-900 dark:bg-slate-800 border-none text-white overflow-hidden relative"
           >
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <TrendingUp size={120} />
             </div>
-            <h4 className="font-bold text-xl mb-4 relative z-10">IA Insights</h4>
-            <div className="space-y-4 relative z-10">
+            <h4 className="font-bold text-xl mb-4 relative z-10">Snapshot Operacional</h4>
+            <div className="space-y-3 relative z-10">
               <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10">
-                <p className="text-sm font-medium text-white/90">A contenção do bot aumentou 12% na última hora após o deploy do novo RouterAgent.</p>
+                <p className="text-xs uppercase tracking-wider text-white/60 font-bold">Contenção do Bot</p>
+                <p className="text-2xl font-black text-white mt-1">{kpis?.botContainmentRate ?? 0}%</p>
+                <p className="text-xs text-white/70 mt-1">Tickets resolvidos sem intervenção humana</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
+                  <p className="text-xs uppercase tracking-wider text-white/60 font-bold">CSAT</p>
+                  <p className="text-lg font-black text-white mt-1">{kpis?.csatMedio ?? 0}</p>
+                </div>
+                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
+                  <p className="text-xs uppercase tracking-wider text-white/60 font-bold">Críticos</p>
+                  <p className="text-lg font-black text-white mt-1">{kpis?.ticketsCriticos ?? 0}</p>
+                </div>
               </div>
               <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10">
-                <p className="text-sm font-medium text-white/90">O setor de suporte pode precisar de reforço humano em breve devido ao pico de demanda.</p>
+                <p className="text-xs uppercase tracking-wider text-white/60 font-bold">Agentes Online</p>
+                <p className="text-2xl font-black text-white mt-1">{kpis?.agentesOnline ?? 0}</p>
               </div>
             </div>
-            <button className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group">
-              Ver Relatório Completo
-              <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
           </motion.div>
         </div>
     </div>
