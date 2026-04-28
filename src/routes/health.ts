@@ -89,13 +89,10 @@ export async function registerHealthRoutes(fastify: FastifyInstance) {
     );
     if (!hasSupabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY|SUPABASE_ANON_KEY');
 
-    // LLM: aceita Vertex (GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_CLOUD_PROJECT)
-    // OU API key direta (GEMINI_API_KEY ou GOOGLE_AI_API_KEY)
-    const hasVertex = !!(process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_CLOUD_PROJECT);
-    const hasApiKey = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
-    if (!hasVertex && !hasApiKey) {
-      missingVars.push('GEMINI_API_KEY|GOOGLE_AI_API_KEY|VERTEX_AI');
-    }
+    // LLM: Vertex-only (GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_CLOUD_PROJECT).
+    // API pública do Google AI Studio não é suportada (modelos preview-only e quota=0).
+    if (!process.env.GOOGLE_CLOUD_PROJECT) missingVars.push('GOOGLE_CLOUD_PROJECT');
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) missingVars.push('GOOGLE_APPLICATION_CREDENTIALS');
     
     checks.checks.environment = {
       status: missingVars.length > 0 ? 'error' : 'ok',

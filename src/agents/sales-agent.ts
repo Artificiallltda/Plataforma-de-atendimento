@@ -117,7 +117,7 @@ export class SalesAgent {
   private interactionCount: Map<string, number> = new Map();
 
   constructor() {
-    this.model = getGeminiModel(process.env.GEMINI_MODEL_SALES || 'gemini-3.1-pro-preview');
+    this.model = getGeminiModel(process.env.GEMINI_MODEL_SALES || 'gemini-2.5-pro');
   }
 
   /**

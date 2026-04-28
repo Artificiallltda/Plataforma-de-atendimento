@@ -1,81 +1,63 @@
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { VertexAI } from '@google-cloud/vertexai';
 import * as dotenv from 'dotenv';
 import path from 'path';
 import { CircuitBreaker } from '../../utils/circuit-breaker';
 import { logger } from '../../utils/logger';
 
-// Garante que as variáveis de ambiente base sejam carregadas caso a injeção em outro canto falhe.
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-// Circuit breaker para proteger chamadas à API Gemini
 const geminiCircuitBreaker = new CircuitBreaker({
-  failureThreshold: 5,    // Abre após 5 falhas
-  timeout: 60000,         // Tenta novamente após 60s
-  halfOpenMaxCalls: 3     // Testa 3 chamadas no modo half-open
+  failureThreshold: 5,
+  timeout: 60000,
+  halfOpenMaxCalls: 3
 });
 
-// Cache de modelos para evitar recriação
 const modelCache: Map<string, unknown> = new Map();
 
 /**
- * Retorna o modelo do Gemini instanciado (da Vertex AI ou da API padrão).
- * 
- * Esta função agora inclui:
- * - Circuit breaker para proteger contra falhas em cascata
- * - Cache de modelos para performance
- * - Logging estruturado
+ * Retorna um modelo Gemini via Vertex AI.
  *
- * @param modelName O nome do modelo (ex: 'gemini-1.5-pro' ou 'gemini-1.5-flash')
- * @returns Instância de um GenerativeModel da Google (Vertex ou SDK Padrão)
+ * Vertex-only por design: a operação roda em ambiente GCP com Service Account
+ * (paa-gcp-key.json). A API pública do Google AI Studio (GEMINI_API_KEY) NÃO
+ * é usada — modelos como gemini-2.5-pro têm limit=0 no free tier e modelos
+ * preview-only de AI Studio não existem no Vertex.
+ *
+ * @param modelName Nome do modelo Vertex (ex: 'gemini-2.5-pro', 'gemini-2.5-flash')
  */
 export function getGeminiModel(modelName: string): unknown {
-  // Verifica cache
   const cachedKey = `${modelName}-${process.env.NODE_ENV}`;
   if (modelCache.has(cachedKey)) {
     return modelCache.get(cachedKey);
   }
 
-  try {
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
-    const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-    // Se tiver projeto configurado, usa a Vertex AI (Plataforma Profissional e Sem Rate Limits excessivos)
-    if (projectId && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      logger.info(`[LLM Factory] Inicializando Vertex AI (Proj: ${projectId}, Loc: ${location}) -> ${modelName}`);
-      
-      const vertexAI = new VertexAI({ project: projectId, location: location });
-      const model = vertexAI.getGenerativeModel({ model: modelName });
-
-      modelCache.set(cachedKey, model);
-      return model;
-    } else {
-      throw new Error("Credenciais da Vertex AI ausentes ou incompletas, tentando fallback...");
-    }
-  } catch (error) {
-    logger.warn(`[LLM Factory] Aviso da Vertex AI: ${(error as Error).message}`);
-    logger.info(`[LLM Factory] Fazendo fallback para GEMINI_API_KEY pessoal...`);
-    
-    // Aceita ambos: GEMINI_API_KEY (canônico) e GOOGLE_AI_API_KEY (legacy do .env atual)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) {
-      throw new Error("[CRÍTICO] GEMINI_API_KEY/GOOGLE_AI_API_KEY não está configurada e a infraestrutura principal falhou!");
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: modelName });
-    
-    modelCache.set(cachedKey, model);
-    return model;
+  if (!projectId || !credentialsPath) {
+    const missing = [
+      !projectId && 'GOOGLE_CLOUD_PROJECT',
+      !credentialsPath && 'GOOGLE_APPLICATION_CREDENTIALS'
+    ].filter(Boolean).join(', ');
+    throw new Error(
+      `[LLM Factory] Vertex AI não configurado. Faltando: ${missing}. ` +
+      `A API pública do Google AI Studio não é suportada — Vertex é obrigatório.`
+    );
   }
+
+  logger.info(
+    `[LLM Factory] LLM_PATH=vertex project=${projectId} location=${location} model=${modelName}`
+  );
+
+  const vertexAI = new VertexAI({ project: projectId, location });
+  const model = vertexAI.getGenerativeModel({ model: modelName });
+
+  modelCache.set(cachedKey, model);
+  return model;
 }
 
 /**
- * Executa geração de conteúdo com proteção de circuit breaker
- * 
- * @param modelName Nome do modelo
- * @param content Conteúdo para gerar
- * @returns Resultado da geração
+ * Executa geração de conteúdo com proteção de circuit breaker.
  */
 export async function generateContentWithCircuitBreaker(
   modelName: string,
@@ -87,9 +69,6 @@ export async function generateContentWithCircuitBreaker(
   });
 }
 
-/**
- * Retorna o estado atual do circuit breaker
- */
 export function getCircuitBreakerState(): string {
   return geminiCircuitBreaker.getState();
 }

@@ -70,7 +70,7 @@ export class RouterAgent {
 
   constructor() {
     this.model = getGeminiModel(process.env.GEMINI_MODEL_ROUTER || 'gemini-2.5-flash');
-    this.modelFallback = getGeminiModel(process.env.GEMINI_MODEL_ROUTER_FALLBACK || 'gemini-3.1-flash-lite-preview');
+    this.modelFallback = getGeminiModel(process.env.GEMINI_MODEL_ROUTER_FALLBACK || 'gemini-2.5-flash-lite');
   }
 
   private async tryGenerate(model: any, userPrompt: string): Promise<RouterOutput> {
