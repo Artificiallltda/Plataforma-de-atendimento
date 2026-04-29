@@ -9,7 +9,7 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { getGeminiModel } from '../core/llm/factory';
+import { getGeminiModel, extractText } from '../core/llm/factory';
 import { supabase } from '../config/supabase';
 import { guruService } from '../integrations/guru-service';
 import { asaasService } from '../integrations/asaas-service';
@@ -92,7 +92,7 @@ export class SupportAgent {
       
       // Chamar Gemini
       const result = await this.model.generateContent(prompt);
-      const responseText = result.response.text();
+      const responseText = extractText(result);
       
       // Parse do JSON response
       const parsed = this.parseResponse(responseText);

@@ -77,3 +77,19 @@ export async function generateContentWithCircuitBreaker(
 export function getCircuitBreakerState(): string {
   return geminiCircuitBreaker.getState();
 }
+
+/**
+ * Extrai o texto da resposta do Vertex AI.
+ * A SDK @google-cloud/vertexai não possui o método .text() na resposta,
+ * portanto precisamos extrair manualmente da estrutura do objeto.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractText(result: any): string {
+  if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+    return result.response.candidates[0].content.parts[0].text;
+  }
+  if (typeof result?.response?.text === 'function') {
+    return result.response.text();
+  }
+  throw new Error('Não foi possível extrair o texto da resposta do LLM: ' + JSON.stringify(result));
+}

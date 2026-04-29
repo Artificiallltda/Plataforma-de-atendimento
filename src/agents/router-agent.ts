@@ -7,7 +7,7 @@
  * - Logging estruturado
  */
 
-import { getGeminiModel, getCircuitBreakerState } from '../core/llm/factory';
+import { getGeminiModel, getCircuitBreakerState, extractText } from '../core/llm/factory';
 import { getSupabaseClient } from '../config/supabase';
 import { logger } from '../utils/logger';
 
@@ -82,7 +82,7 @@ export class RouterAgent {
       // GenerateContentRequest e envia o array bruto — sem campo `contents` —
       // causando erro 400 ("at least one contents field is required").
       const result = await model.generateContent(ROUTER_SYSTEM_PROMPT + '\n\n' + userPrompt);
-      const text = result.response.text();
+      const text = extractText(result);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       
       if (!jsonMatch) {
