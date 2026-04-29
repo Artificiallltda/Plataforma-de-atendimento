@@ -77,7 +77,11 @@ export class RouterAgent {
     const startTime = Date.now();
     
     try {
-      const result = await model.generateContent([ROUTER_SYSTEM_PROMPT, userPrompt]);
+      // CORREÇÃO CRÍTICA: a SDK @google-cloud/vertexai v1.10.4 só converte
+      // `string` para `{contents: [...]}`. Se receber `string[]`, trata como
+      // GenerateContentRequest e envia o array bruto — sem campo `contents` —
+      // causando erro 400 ("at least one contents field is required").
+      const result = await model.generateContent(ROUTER_SYSTEM_PROMPT + '\n\n' + userPrompt);
       const text = result.response.text();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       
@@ -138,6 +142,13 @@ export class RouterAgent {
   }
 
   async classify(message: string, context?: unknown): Promise<RouterOutput> {
+    // Defesa em profundidade: mensagem vazia = não há o que classificar.
+    // Se chegou aqui sem texto, retorna fallback sem gastar tokens.
+    if (!message || !message.trim()) {
+      logger.warn('[Router] classify() chamado com mensagem vazia — retornando fallback');
+      return this.getFallbackResponse('Mensagem vazia recebida');
+    }
+
     const startTime = Date.now();
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const prompt = `<HORA_ATUAL>: ${now}\nContexto: ${JSON.stringify(context)}\nMensagem do Cliente: "${message}"`;

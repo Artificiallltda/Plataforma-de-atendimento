@@ -153,6 +153,7 @@ export class FinanceAgent {
    * Construir prompt para o modelo
    */
   private buildPrompt(context: FinanceAgentContext, message: string): string {
+    const safeMessage = (message && message.trim()) || '[mensagem de mídia sem texto]';
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     let prompt = FINANCE_AGENT_SYSTEM_PROMPT + '\n\n';
     
@@ -173,7 +174,7 @@ export class FinanceAgent {
       prompt += '\n';
     }
 
-    prompt += `MENSAGEM ATUAL DO CLIENTE: "${message}"\n\n`;
+    prompt += `MENSAGEM ATUAL DO CLIENTE: "${safeMessage}"\n\n`;
     prompt += `Responda EXCLUSIVAMENTE com um bloco JSON válido, sem texto antes ou depois:\n{\n  "response": "<sua resposta natural, empática e objetiva ao cliente>",\n  "action": "responded",\n  "confidence": <0.0 a 1.0>,\n  "needsHumanHandoff": false,\n  "escalationReason": null\n}`;
     
     return prompt;

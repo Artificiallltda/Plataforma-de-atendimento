@@ -58,14 +58,19 @@ export function getGeminiModel(modelName: string): unknown {
 
 /**
  * Executa geração de conteúdo com proteção de circuit breaker.
+ *
+ * NOTA: A SDK @google-cloud/vertexai v1.x só converte `string` para
+ * `{contents: [...]}`. `string[]` é tratado como GenerateContentRequest
+ * bruto, causando erro 400. Por isso, concatenamos o array aqui.
  */
 export async function generateContentWithCircuitBreaker(
   modelName: string,
-  content: string[]
+  content: string | string[]
 ): Promise<{ response: { text: () => string } }> {
+  const prompt = Array.isArray(content) ? content.join('\n\n') : content;
   return geminiCircuitBreaker.execute(async () => {
-    const model = getGeminiModel(modelName) as { generateContent: (content: string[]) => Promise<{ response: { text: () => string } }> };
-    return model.generateContent(content);
+    const model = getGeminiModel(modelName) as { generateContent: (content: string) => Promise<{ response: { text: () => string } }> };
+    return model.generateContent(prompt);
   });
 }
 

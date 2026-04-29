@@ -77,6 +77,22 @@ export async function processIncomingMessage(message: {
   body: string;
 }) {
   try {
+    // GUARD: body vazio/undefined não pode entrar no pipeline de IA.
+    // Cenário real: cliente envia foto sem legenda, sticker, ou mídia sem texto.
+    // Sem esse guard, o Vertex AI recebe contents vazio e retorna 400 Bad Request.
+    if (!message.body || !message.body.trim()) {
+      console.warn('⚠️ [MPS] Mensagem com body vazio — ignorando pipeline de IA', {
+        id: message.id,
+        channel: message.channel,
+        customer_id: message.customer_id
+      });
+      return {
+        ticketId: message.ticket_id,
+        clarificationMessage: null,
+        sector: undefined,
+      };
+    }
+
     // 1. Recuperar contexto do cliente e histórico REAL (Cliente + Bot)
     const customerContext = await getRouterAgent().getCustomerContext(message.customer_id);
 

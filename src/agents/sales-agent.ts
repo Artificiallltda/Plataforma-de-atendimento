@@ -192,6 +192,7 @@ export class SalesAgent {
    * Construir prompt para o modelo
    */
   private buildPrompt(context: SalesAgentContext, message: string): string {
+    const safeMessage = (message && message.trim()) || '[mensagem de mídia sem texto]';
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     let prompt = SALES_AGENT_SYSTEM_PROMPT + '\n\n';
 
@@ -216,7 +217,7 @@ export class SalesAgent {
       prompt += '\n';
     }
 
-    prompt += `MENSAGEM ATUAL DO LEAD: "${message}"\n\n`;
+    prompt += `MENSAGEM ATUAL DO LEAD: "${safeMessage}"\n\n`;
     prompt += `Responda EXCLUSIVAMENTE com um bloco JSON válido, sem texto antes ou depois:\n{\n  "response": "<sua resposta como consultor de vendas — empática, persuasiva e com valor agregado>",\n  "action": "responded",\n  "confidence": <0.0 a 1.0>,\n  "needsHumanHandoff": false,\n  "escalationReason": null,\n  "leadProfile": "basico" | "premium" | "enterprise" | "unknown"\n}`;
     
     return prompt;
