@@ -59,7 +59,7 @@ export function NpsCompositionChart({ distribution }: NpsCompositionChartProps) 
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}
-            formatter={(value: number) => [`${value} resposta(s)`, '']}
+            formatter={(value: any) => [`${Number(value ?? 0)} resposta(s)`, '']}
           />
         </PieChart>
       </ResponsiveContainer>

@@ -15,7 +15,7 @@ const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL |
 const ADMIN_TOKEN = process.env.ADMIN_API_TOKEN || ''
 
 async function requireDashboardSession() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   return !!session
 }

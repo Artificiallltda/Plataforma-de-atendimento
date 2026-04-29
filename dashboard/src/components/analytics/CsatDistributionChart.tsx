@@ -34,9 +34,10 @@ export function CsatDistributionChart({ distribution }: CsatDistributionChartPro
           <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}
-            formatter={(value: number, name: string, props: any) => {
-              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0
-              return [`${value} (${pct}%)`, props.payload.label]
+            formatter={(value: any, _name: any, props: any) => {
+              const num = Number(value ?? 0)
+              const pct = total > 0 ? ((num / total) * 100).toFixed(1) : 0
+              return [`${num} (${pct}%)`, props.payload.label]
             }}
           />
           <Bar dataKey="count" radius={[8, 8, 0, 0]}>

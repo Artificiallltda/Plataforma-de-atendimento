@@ -38,9 +38,10 @@ export function NpsTrendChart({ data }: NpsTrendChartProps) {
           <ReferenceLine y={70} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.4} />
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}
-            formatter={(value: number, name: string) => {
-              if (name === 'score') return [`NPS: ${value}`, '']
-              return [value, name]
+            formatter={(value: any, name: any) => {
+              const num = Number(value ?? 0)
+              if (name === 'score') return [`NPS: ${num}`, '']
+              return [num, String(name ?? '')]
             }}
           />
           <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2.5} fill="url(#npsPositive)" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#10b981' }} />

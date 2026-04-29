@@ -35,7 +35,7 @@ export function CsatTrendChart({ data }: CsatTrendChartProps) {
           <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}
-            formatter={(value: number) => [`${value.toFixed(1)} ⭐`, 'CSAT']}
+            formatter={(value: any) => [`${Number(value ?? 0).toFixed(1)} ⭐`, 'CSAT']}
           />
           <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2.5} fill="url(#csatGradient)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#3b82f6' }} />
         </AreaChart>

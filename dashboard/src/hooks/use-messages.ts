@@ -109,7 +109,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
 
         const mappedMessages = (data || []).map(m => {
           const msg = m as Record<string, unknown>;
-          return msg as Message;
+          return msg as unknown as Message;
         });
 
         setMessages(mappedMessages);
@@ -130,7 +130,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
     const newPayload = payload as { new: Record<string, unknown> };
     const newMessage = newPayload.new;
     
-    const normalizedMsg = newMessage as Message;
+    const normalizedMsg = newMessage as unknown as Message;
 
     setMessages(prev => {
       // Evitar duplicatas
