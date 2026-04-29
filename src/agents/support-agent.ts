@@ -122,14 +122,20 @@ export class SupportAgent {
 
       return parsed;
     } catch (error) {
-      console.error('❌ Erro no SupportAgent:', error);
-      
-      // Fallback: resposta genérica
+      // ANTES: devolvia "Entendi seu problema, vou verificar..." e ficava mudo (cliente nunca recebia
+      // resposta real). Agora: assumimos honestamente que o LLM caiu e escalamos pra humano,
+      // com a mesma mensagem do path de escalada normal — sem promessa que não vai cumprir.
+      console.error('❌ [SupportAgent] LLM falhou — escalando para humano:', {
+        error: error instanceof Error ? error.message : error,
+        ticketId: context.ticket_id
+      });
+
       return {
-        response: 'Entendi seu problema. Vou verificar o que está acontecendo e já te retorno.',
-        action: 'responded',
-        confidence: 0.5,
-        needsHumanHandoff: false
+        response: this.getEscalationMessage(),
+        action: 'escalated',
+        confidence: 1.0,
+        needsHumanHandoff: true,
+        escalationReason: `Falha do LLM: ${error instanceof Error ? error.message : 'erro desconhecido'}`
       };
     }
   }

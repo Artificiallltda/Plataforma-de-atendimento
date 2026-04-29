@@ -14,6 +14,59 @@ import { updateTicketCurrentAgent } from '../types/handoff';
 const supabase = getSupabaseClient();
 
 /**
+ * Mensagem honesta para o cliente quando o LLM cai (billing, quota, rede, etc).
+ * Tom alinhado com getEscalationMessage() do SupportAgent — sem clichê de telemarketing,
+ * sem promessa de "já te retorno" que o bot não vai cumprir.
+ */
+const HUMAN_FALLBACK_MESSAGE =
+  'Tô com instabilidade no sistema agora. Vou pedir para um colega da equipe humana entrar com a gente — te chamamos por aqui mesmo em poucos minutos.';
+
+/**
+ * Marca o ticket como aguardando_humano e dispara o handoff-notifier.
+ * Best-effort: nunca lança. Se Supabase ou notifier falharem, apenas loga.
+ */
+async function escalateToHuman(params: {
+  ticketId: string | undefined;
+  customerId: string;
+  channel: 'whatsapp' | 'telegram' | 'web';
+  sector: string;
+  intent: string;
+  lastUserMessage: string;
+  reason: string;
+}): Promise<void> {
+  if (!params.ticketId) {
+    console.warn('⚠️ [MPS] escalateToHuman chamado sem ticketId — pulando update no Supabase');
+  } else {
+    try {
+      await (supabase.from('tickets') as any)
+        .update({ status: 'aguardando_humano', priority: 'alta' })
+        .eq('id', params.ticketId);
+      console.log(`🚀 [MPS] Ticket ${params.ticketId} marcado como aguardando_humano (motivo: ${params.reason})`);
+    } catch (err) {
+      console.error('❌ [MPS] Falha ao atualizar ticket para aguardando_humano:', {
+        ticketId: params.ticketId,
+        error: err instanceof Error ? err.message : err
+      });
+    }
+  }
+
+  // Notificar atendentes humanos (Slack se configurado, senão só log — Realtime do Dashboard cobre).
+  try {
+    const { notifyHumanHandoff } = await import('./handoff-notifier');
+    await notifyHumanHandoff({
+      ticketId: params.ticketId || 'unknown',
+      channel: params.channel,
+      sector: params.sector,
+      customerId: params.customerId,
+      intent: params.intent,
+      lastUserMessage: params.lastUserMessage,
+    });
+  } catch (notifyErr) {
+    console.warn('⚠️ [MPS] Falha ao notificar handoff humano:', notifyErr instanceof Error ? notifyErr.message : notifyErr);
+  }
+}
+
+/**
  * Processar mensagem recebida e gerar resposta inteligente
  */
 export async function processIncomingMessage(message: {
@@ -63,6 +116,12 @@ export async function processIncomingMessage(message: {
       intent: classification.intent,
       priority: classification.priority
     });
+
+    // BUG GUARD: Router devolve `intent: 'erro_classificacao'` apenas no fallback
+    // (LLM caiu — billing, quota, rede). NÃO faz sentido delegar para agente
+    // especialista nesse estado: ele vai tentar gerar com o mesmo LLM caído e
+    // bater no mesmo erro. Escalamos pra humano direto, com mensagem honesta.
+    const routerLlmFailed = classification.intent === 'erro_classificacao';
 
     // 3. Gestão de Ticket (Reutilizar aberto ou Criar novo)
     // '' (string vazia) deve ser tratado como undefined
@@ -212,19 +271,50 @@ export async function processIncomingMessage(message: {
       };
     }
 
-    // Chamar o agente correto baseado na classificação fluida
-    if (sector === 'suporte') {
-      const result = await getSupportAgent().processMessage(agentContext);
-      agentResponse = result.response;
-      needsHumanHandoff = (result as any).needsHumanHandoff;
-    } else if (sector === 'comercial') {
-      const result = await getSalesAgent().processMessage(agentContext);
-      agentResponse = result.response;
-      needsHumanHandoff = result.needsHumanHandoff;
-    } else if (sector === 'financeiro') {
-      const result = await getFinanceAgent().processMessage(agentContext);
-      agentResponse = result.response;
-      needsHumanHandoff = (result as any).needsHumanHandoff;
+    // 4b. ATALHO DE RESILIÊNCIA: se o Router já falhou no LLM (intent=erro_classificacao),
+    // não chama agente especialista — escala direto pra humano com mensagem honesta.
+    // Antes: Router falha → MPS delega pra suporte → suporte tenta gerar no mesmo LLM
+    // caído → catch genérico devolve "Entendi seu problema, vou verificar..." → cliente
+    // fica esperando resposta que nunca vem.
+    if (routerLlmFailed) {
+      console.warn(`⚠️ [MPS] Router em fallback (LLM caído). Escalando ticket ${finalTicketId} direto pra humano.`);
+      agentResponse = HUMAN_FALLBACK_MESSAGE;
+      needsHumanHandoff = true;
+    } else {
+      // Chamar o agente correto baseado na classificação fluida.
+      // Try/catch defensivo: se a geração do agente falhar (Vertex caído, quota, etc),
+      // ainda devolvemos uma resposta honesta ao cliente em vez de ficar mudo.
+      try {
+        if (sector === 'suporte') {
+          const result = await getSupportAgent().processMessage(agentContext);
+          agentResponse = result.response;
+          needsHumanHandoff = (result as any).needsHumanHandoff;
+        } else if (sector === 'comercial') {
+          const result = await getSalesAgent().processMessage(agentContext);
+          agentResponse = result.response;
+          needsHumanHandoff = result.needsHumanHandoff;
+        } else if (sector === 'financeiro') {
+          const result = await getFinanceAgent().processMessage(agentContext);
+          agentResponse = result.response;
+          needsHumanHandoff = (result as any).needsHumanHandoff;
+        }
+      } catch (agentError) {
+        console.error('❌ [MPS] Agente especialista lançou exceção — escalando para humano:', {
+          sector,
+          ticketId: finalTicketId,
+          error: agentError instanceof Error ? agentError.message : agentError
+        });
+        agentResponse = HUMAN_FALLBACK_MESSAGE;
+        needsHumanHandoff = true;
+      }
+    }
+
+    // Defesa em profundidade: se o agente retornou string vazia/null mas não escalou,
+    // ainda assim NÃO podemos ficar mudos. Trata como falha e escala.
+    if (!agentResponse || !agentResponse.trim()) {
+      console.warn(`⚠️ [MPS] Agente '${sector}' retornou resposta vazia — escalando para humano.`);
+      agentResponse = HUMAN_FALLBACK_MESSAGE;
+      needsHumanHandoff = true;
     }
 
     console.log('💬 [MPS] Resposta do agente:', {
@@ -234,28 +324,20 @@ export async function processIncomingMessage(message: {
       responsePreview: agentResponse?.substring(0, 100)
     });
 
-    // 4b. Executar TRANSBORDO se solicitado pelo agente
+    // 4c. Executar TRANSBORDO se solicitado pelo agente (ou pelos guards de resiliência acima).
+    // Centralizado em escalateToHuman() para garantir comportamento consistente em todos
+    // os caminhos: Router falhou, agente lançou exceção, agente decidiu escalar, ou
+    // resposta vazia — todos passam pelo mesmo update + notify.
     if (needsHumanHandoff) {
-      console.log(`🚀 Escalando ticket ${finalTicketId} para humano.`);
-      await (supabase.from('tickets') as any).update({
-        status: 'aguardando_humano',
-        priority: 'alta'
-      }).eq('id', finalTicketId);
-
-      // Notificação humana imediata (Slack/email): best-effort, não bloqueia.
-      try {
-        const { notifyHumanHandoff } = await import('./handoff-notifier');
-        await notifyHumanHandoff({
-          ticketId: finalTicketId as string,
-          channel: message.channel,
-          sector,
-          customerId: message.customer_id,
-          intent: classification.intent,
-          lastUserMessage: message.body,
-        });
-      } catch (notifyErr) {
-        console.warn('⚠️ [MPS] Falha ao notificar handoff humano:', notifyErr instanceof Error ? notifyErr.message : notifyErr);
-      }
+      await escalateToHuman({
+        ticketId: finalTicketId,
+        customerId: message.customer_id,
+        channel: message.channel,
+        sector,
+        intent: classification.intent,
+        lastUserMessage: message.body,
+        reason: routerLlmFailed ? 'router_llm_failed' : 'agent_decision_or_failure',
+      });
     }
 
     // 5. [CRÍTICO] PERSISTIR RESPOSTA DA IA NO BANCO DE DADOS
@@ -289,9 +371,23 @@ export async function processIncomingMessage(message: {
       ticketId: message.ticket_id,
       channel: message.channel
     });
-    return { 
-      ticketId: message.ticket_id, 
-      clarificationMessage: 'Peço desculpas, tive uma oscilação na minha rede neural. Poderia repetir sua solicitação?' 
+
+    // ANTES: devolvia "Peço desculpas, tive uma oscilação na minha rede neural" — clichê
+    // ridículo que não escala nem avisa o time. Agora: tenta escalar pra humano (best-effort,
+    // pode falhar se Supabase também caiu) e devolve mensagem honesta. Cliente recebe E é avisado.
+    await escalateToHuman({
+      ticketId: message.ticket_id,
+      customerId: message.customer_id,
+      channel: message.channel,
+      sector: 'suporte',
+      intent: 'erro_critico_mps',
+      lastUserMessage: message.body,
+      reason: error instanceof Error ? error.message : 'mps_exception',
+    }).catch(() => { /* já loga internamente */ });
+
+    return {
+      ticketId: message.ticket_id,
+      clarificationMessage: HUMAN_FALLBACK_MESSAGE,
     };
   }
 }

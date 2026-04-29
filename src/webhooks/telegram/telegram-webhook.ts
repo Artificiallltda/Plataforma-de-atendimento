@@ -89,6 +89,21 @@ async function handleIncomingTelegramMessage(msg: any, provider: TelegramProvide
       stack: error instanceof Error ? error.stack : undefined,
       user_id: msg.userId
     });
+
+    // CRÍTICO: se chegou aqui, o MPS lançou exceção (não pegou o erro internamente).
+    // Não podemos deixar o cliente mudo. Mensagem honesta + cliente sabe que humano vai entrar.
+    // Best-effort: se até o Telegram cair, ao menos o log acima registra o incidente.
+    try {
+      await provider.sendMessage({
+        to: msg.userId,
+        text: 'Tô com instabilidade no sistema agora. Vou pedir para um colega da equipe humana entrar com a gente — te chamamos por aqui mesmo em poucos minutos.',
+      });
+    } catch (sendErr) {
+      console.error('❌ [Telegram] Falhou até o envio do fallback honesto:', {
+        error: sendErr instanceof Error ? sendErr.message : sendErr,
+        user_id: msg.userId
+      });
+    }
   }
 }
 

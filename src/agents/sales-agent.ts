@@ -171,14 +171,19 @@ export class SalesAgent {
 
       return parsed;
     } catch (error) {
-      console.error('❌ Erro no SalesAgent:', error);
-      
-      // Fallback: resposta genérica
+      // ANTES: respondia "Entendi seu interesse! Vou te ajudar..." e ficava mudo (cliente nunca
+      // recebia continuação). Agora: assume falha do LLM e escala honestamente para humano.
+      console.error('❌ [SalesAgent] LLM falhou — escalando para humano:', {
+        error: error instanceof Error ? error.message : error,
+        ticketId: context.ticket_id
+      });
+
       return {
-        response: 'Entendi seu interesse! Vou te ajudar a encontrar o melhor plano. Um momento.',
-        action: 'responded',
-        confidence: 0.5,
-        needsHumanHandoff: false
+        response: this.getEscalationMessage(),
+        action: 'escalated',
+        confidence: 1.0,
+        needsHumanHandoff: true,
+        escalationReason: `Falha do LLM: ${error instanceof Error ? error.message : 'erro desconhecido'}`
       };
     }
   }

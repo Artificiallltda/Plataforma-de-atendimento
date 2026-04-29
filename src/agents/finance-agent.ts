@@ -132,14 +132,19 @@ export class FinanceAgent {
 
       return parsed;
     } catch (error) {
-      console.error('❌ Erro no FinanceAgent:', error);
-      
-      // Fallback: resposta genérica
+      // ANTES: respondia "Entendi sua questão financeira. Vou verificar..." e ficava mudo.
+      // Agora: assume falha do LLM e escala honestamente para humano.
+      console.error('❌ [FinanceAgent] LLM falhou — escalando para humano:', {
+        error: error instanceof Error ? error.message : error,
+        ticketId: context.ticket_id
+      });
+
       return {
-        response: 'Entendi sua questão financeira. Vou verificar e já te retorno.',
-        action: 'responded',
-        confidence: 0.5,
-        needsHumanHandoff: false
+        response: this.getEscalationMessage(),
+        action: 'escalated',
+        confidence: 1.0,
+        needsHumanHandoff: true,
+        escalationReason: `Falha do LLM: ${error instanceof Error ? error.message : 'erro desconhecido'}`
       };
     }
   }
