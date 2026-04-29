@@ -36,6 +36,7 @@ export interface EscalationAlert {
     timeoutMinutes?: number;
     retryCount?: number;
     similarErrors?: number;
+    csat_score?: number;
   };
   timestamp: Date;
 }

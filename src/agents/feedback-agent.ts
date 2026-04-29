@@ -9,11 +9,8 @@
  * @see docs/architecture/architecture.md#3-protocolo-de-handoff-entre-agentes
  */
 
-import { supabase, Database } from '../config/supabase';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
 import { escalationAgent } from './escalation-agent';
-
-const typedClient = supabase as unknown as SupabaseClient<Database>;
 
 export type FeedbackType = 'csat' | 'nps';
 export type NpsClassification = 'detractor' | 'passive' | 'promoter';
@@ -183,7 +180,7 @@ export class FeedbackAgent {
       }
 
       // Registrar feedback no Supabase
-      const { error: feedbackError } = await typedClient
+      const { error: feedbackError } = await supabase
         .from('feedback')
         .insert({
           ticket_id: ticketId,
@@ -192,7 +189,7 @@ export class FeedbackAgent {
           score,
           comment: comment || null,
           created_at: new Date().toISOString()
-        } as any);
+        });
 
       if (feedbackError) {
         console.error('❌ Erro ao registrar CSAT:', feedbackError);
@@ -203,9 +200,9 @@ export class FeedbackAgent {
       }
 
       // Atualizar ticket com CSAT
-      await typedClient
+      await supabase
         .from('tickets')
-        .update({ csat_score: score } as any)
+        .update({ csat_score: score })
         .eq('id', ticketId);
 
       // Verificar se precisa de escalada (CSAT baixo)
@@ -461,9 +458,11 @@ export class FeedbackAgent {
         });
 
       // Notificar via EscalationAgent
+      // (snake_case é o contrato de EscalationAlert; usar ticketId/customerId aqui
+      //  resultava em alerta sem id de ticket gravado no banco — bug silencioso)
       await escalationAgent.triggerEscalation({
-        ticketId,
-        customerId,
+        ticket_id: ticketId,
+        customer_id: customerId,
         type: 'sentiment',
         level: 'high',
         message: `Cliente avaliou atendimento com ${score}/5 estrelas`,

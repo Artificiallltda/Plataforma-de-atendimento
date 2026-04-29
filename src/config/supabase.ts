@@ -311,12 +311,22 @@ export type Database = {
 };
 
 // Singleton do cliente Supabase
-let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
+//
+// Nota sobre tipos: a versão atual do @supabase/supabase-js exige uma
+// propriedade interna `__InternalSupabase: { PostgrestVersion }` no tipo
+// Database, que não está documentada. Sem ela, queries em tabelas custom
+// retornam `never` e o TS rejeita .insert/.update/.select.
+//
+// Como o Database acima é mantido apenas como contrato/documentação dos
+// schemas, removemos o genérico no createClient e tipamos o cliente como
+// any-friendly. Schema Database fica disponível para tipos discretos
+// (ex: import { Database } from '../config/supabase' e usar Database['public']['Tables']['...']['Row']).
+let supabaseInstance: SupabaseClient | null = null;
 
 /**
  * Obter ou criar instância do cliente Supabase com timeout nas queries
  */
-export function getSupabaseClient(): ReturnType<typeof createClient<Database>> {
+export function getSupabaseClient(): SupabaseClient {
   if (!supabaseInstance) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -338,7 +348,7 @@ export function getSupabaseClient(): ReturnType<typeof createClient<Database>> {
       }
     };
 
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseKey, options);
+    supabaseInstance = createClient(supabaseUrl, supabaseKey, options);
 
     logger.info('✅ Supabase client inicializado');
   }
@@ -356,5 +366,5 @@ export function resetSupabaseClient(): void {
   }
 }
 
-export const supabase = getSupabaseClient();
+export const supabase: SupabaseClient = getSupabaseClient();
 export default supabase;

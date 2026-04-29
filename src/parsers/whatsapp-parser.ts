@@ -133,7 +133,7 @@ export function parseWhatsAppEvent(payload: WhatsAppWebhookPayload): ParsedMessa
 /**
  * Parse uma mensagem individual
  */
-function parseMessage(message: WhatsAppMessage): ParsedMessage['messages'][number] | null {
+function parseMessage(message: WhatsAppMessage): NonNullable<ParsedMessage['messages']>[number] | null {
   const baseMessage = {
     externalId: message.id,
     from: message.from,
@@ -191,7 +191,7 @@ function parseMessage(message: WhatsAppMessage): ParsedMessage['messages'][numbe
 /**
  * Parse um status individual
  */
-function parseStatus(status: WhatsAppStatus): ParsedMessage['statuses'][number] | null {
+function parseStatus(status: WhatsAppStatus): NonNullable<ParsedMessage['statuses']>[number] | null {
   return {
     externalId: status.id,
     status: status.status,

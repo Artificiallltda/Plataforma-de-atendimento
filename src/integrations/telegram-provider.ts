@@ -190,7 +190,9 @@ export class TelegramProvider {
       };
 
       if (message.replyMarkup) {
-        options.reply_markup = message.replyMarkup;
+        // O SDK aceita uniao de InlineKeyboardMarkup | ReplyKeyboardMarkup; nosso
+        // tipo permite ambos os campos no mesmo objeto para flexibilidade.
+        options.reply_markup = message.replyMarkup as unknown as TelegramBot.SendMessageOptions['reply_markup'];
       }
 
       const result = await this.bot.sendMessage(message.to, message.text, options);
